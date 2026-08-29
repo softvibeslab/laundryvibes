@@ -1,5 +1,10 @@
-const Order = require("../../../models/userOrder");
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
+const Order = require('../../../models/userOrder');
+const {
+  calculateTotal, enabledMethod, getPaymentConfig, parseClothes, parsePrice, parseWeight,
+} = require('../../../services/paymentService');
+const { validateEvidence } = require('../../../middleware/evidenceUpload');
+const { financialDto } = require('../../../utils/orderDto');
 
 const orderDto = (order) => ({
   id: String(order._id),
@@ -7,103 +12,83 @@ const orderDto = (order) => ({
   weight: order.weight,
   status: order.status,
   createdAt: order.createdAt,
+  ...financialDto(order),
 });
 
-const submitOrder = async (req, res, next) => {
+async function submitOrder(req, res, next) {
+  const numberOfClothes = parseClothes(req.body.numberOfClothes);
+  const parsedWeight = parseWeight(req.body.weight);
+  if (!numberOfClothes)
+    return res.status(400).json({ message: 'El número de prendas debe ser un entero positivo dentro del máximo permitido' });
+  if (!parsedWeight)
+    return res.status(400).json({ message: 'El peso debe ser positivo, finito y estar dentro del máximo permitido' });
 
-
- 
-  
-
-    const numberOfClothes = Number(req.body.numberOfClothes);
-    const weight = Number(req.body.weight);
-    const userId = req.user.userId;
-
-    if(!Number.isInteger(numberOfClothes) || numberOfClothes < 1){
-      return res.status(400).json({message:"El número de prendas debe ser un número entero positivo"})
-    }
-    if(!Number.isFinite(weight) || weight <= 0){
-      return res.status(400).json({message:"El peso debe ser mayor que cero"})
-    }
-
-    try {
-    const newOrder = new Order({
-      userId,
-      numberOfClothes,
-      weight,
-     
-
-    });
-
-
-
-    await newOrder.save();
-    req.app.locals.io?.to('workers').emit('orders:refresh');
-    return res.status(201).json({ message: "Pedido enviado correctamente", order: orderDto(newOrder) });
-  } catch (error) {
-    return next(error);
-  }
-};
-
-
-
-
-// Get all orderes with number of  orders
-
-const getOrderSummary = async (req, res, next) => {
   try {
+    const config = await getPaymentConfig();
+    const parsedPrice = parsePrice(config?.pricePerKg);
+    const total = parsedPrice ? calculateTotal(parsedWeight.value, parsedPrice.value) : null;
+    if (!parsedPrice || !Number.isFinite(total))
+      return res.status(409).json({ message: 'La tarifa vigente no es válida; solicita su regularización' });
+    const method = enabledMethod(config, req.body.paymentMethod);
+    if (!method) return res.status(400).json({ message: 'El método de pago no está activo' });
+    const evidence = validateEvidence(req.file);
+    if (method.requiresEvidence && !evidence)
+      return res.status(400).json({ message: 'Este método de pago requiere evidencia' });
+    if (!method.requiresEvidence && evidence)
+      return res.status(400).json({ message: 'El pago en efectivo no admite evidencia' });
 
-
-    const userId =  new mongoose.Types.ObjectId(req.user.userId);
-   const orders = await Order.find({userId}).sort({createdAt : -1})
-
-   if(!orders || orders.length === 0 ){
-    return res.status(404).json({message:"No se encontraron pedidos"});
-   }
-
-  //  total orders
-   const totalOrders = orders.length;
-
-  //  Pending order
-    const pendingOrders = await Order.find({userId, status:"Pending"})
-
-  //  length of pending order
-    const lengthOfPending = pendingOrders.length;
-
-  //  Completed order
-    const completeOrders = await Order.find({userId ,status : "Completed"})
-
-  //  length of completed order
-    const lengthOfComplete = completeOrders.length;
-    
-   const formattedOrders = orders.map(order => ({
-    orderId: order._id,
-    numberOfClothes: order.numberOfClothes,
-    weight: order.weight,
-    status: order.status,
-    createdAt: new Date(order.createdAt).toLocaleString('en-US', {
-      timeZone: 'Asia/Kolkata',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true,
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    })
-}));
-
-res.status(200).json({
-  totalOrders,
-  lengthOfPending,
-  lengthOfComplete,
-  order:formattedOrders
-})
-
-
+    const now = new Date();
+    const newOrder = await Order.create({
+      userId: req.user.userId,
+      numberOfClothes,
+      weight: parsedWeight.value,
+      pricing: {
+        currency: config.currency,
+        pricePerKg: parsedPrice.value,
+        total,
+      },
+      payment: { current: {
+        method: method.id,
+        methodLabel: method.label,
+        status: method.requiresEvidence ? 'pending_review' : 'pending',
+        source: 'client',
+        actorId: req.user.userId,
+        actorRole: 'user',
+        recordedAt: now,
+      }, clientDeclaration: {
+        method: method.id, methodLabel: method.label,
+        status: method.requiresEvidence ? 'pending_review' : 'pending', source: 'client',
+        actorId: req.user.userId, actorRole: 'user', recordedAt: now,
+        ...(evidence ? { evidence } : {}),
+      } },
+    });
+    req.app.locals.io?.to('workers').emit('orders:refresh');
+    return res.status(201).json({ message: 'Pedido enviado correctamente', order: orderDto(newOrder) });
   } catch (error) { return next(error); }
-};
+}
 
+async function getOrderSummary(req, res, next) {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user.userId);
+    const orders = await Order.find({ userId }).sort({ createdAt: -1 });
+    if (!orders || orders.length === 0) {
+      return res.json({ totalOrders: 0, lengthOfPending: 0, lengthOfComplete: 0, order: [] });
+    }
+    const formattedOrders = orders.map((order) => ({
+      orderId: order._id,
+      numberOfClothes: order.numberOfClothes,
+      weight: order.weight,
+      status: order.status,
+      createdAt: order.createdAt,
+      ...financialDto(order),
+    }));
+    return res.json({
+      totalOrders: orders.length,
+      lengthOfPending: orders.filter((order) => order.status === 'Pending').length,
+      lengthOfComplete: orders.filter((order) => order.status === 'Completed').length,
+      order: formattedOrders,
+    });
+  } catch (error) { return next(error); }
+}
 
-
-module.exports = {submitOrder, getOrderSummary };
+module.exports = { getOrderSummary, orderDto, submitOrder };

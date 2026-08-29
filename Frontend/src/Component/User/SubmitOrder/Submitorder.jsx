@@ -1,539 +1,232 @@
-import {useEffect, useState,useContext } from "react";
-import axios from 'axios'
-import { OrderContext } from "./OrderContext";
+import { useContext, useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
+import { Banknote, CreditCard, Landmark, Package, Scale, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import Sidebar from '../Sidebar';
+import { OrderContext } from './OrderContext';
+import { apiMessageEs } from '../../../utils/localization';
 import {
-  Package,
-  User,
-  Home,
-  Shirt,
-  Scale,
+  EVIDENCE_ACCEPT,
+  formatMoney,
+  getPaymentConfig,
+  validateEvidenceFile,
+} from '../../../utils/payments';
 
-  QrCode,
-
-  DollarSign,
-  Building,
-  AlertCircle,
-} from "lucide-react";
-import Sidebar from "../Sidebar";
-import LoaderM from "../../../assets/loader/loader";
-import { useNavigate } from "react-router-dom";
-import { apiMessageEs } from "../../../utils/localization";
+const methodIcons = { cash: Banknote, transfer: Landmark, card: CreditCard };
 
 export default function SubmitOrder() {
-  const [step, setStep] = useState(1);
-  const [showpayment, setShowPayment] = useState(false);
-  const [screenshot, setScreenshot] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const imageURL = URL.createObjectURL(file);
-      setScreenshot(imageURL);
-    }
-  };
-
-
-  // to send data for orderconfirmation component
-    const {weight,setWeight,numberofitems,setNumberOfItems}= useContext(OrderContext)
-    const price = 60*weight
-      const [user, setUser] = useState({});
+  const navigate = useNavigate();
+  const {
+    weight, setWeight, numberofitems, setNumberOfItems, setSubmittedOrder,
+  } = useContext(OrderContext);
+  const [user, setUser] = useState({});
+  const [config, setConfig] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [evidence, setEvidence] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchUserDeatils = async () => {
-      setLoading(true);
-      setError(false);
-      try {
-
-        const token = localStorage.getItem("token");
-        // console.log("token",token);
-
-        const response = await axios.get("/api/user/profile", {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-
-        const data = await response.data;
-        // console.log("api response ",data);
-
-        setUser(data)
-
-        
-      } catch (error) {
-        setError(apiMessageEs(error.response?.data?.message, 'No se pudieron cargar tus datos'))
-      }
-      finally {
-        setLoading(false);
-      }
-    };
-    fetchUserDeatils()
+    let current = true;
+    Promise.all([axios.get('/api/user/profile'), getPaymentConfig()])
+      .then(([profileResponse, paymentConfig]) => {
+        if (!current) return;
+        setUser(profileResponse.data);
+        setConfig(paymentConfig);
+        const firstEnabled = paymentConfig.methods.find((method) => method.enabled);
+        setPaymentMethod(firstEnabled?.id || '');
+      })
+      .catch((requestError) => {
+        if (current) setError(apiMessageEs(requestError.response?.data?.message, 'No se pudo cargar la información del pedido.'));
+      })
+      .finally(() => current && setLoading(false));
+    return () => { current = false; };
   }, []);
 
-  // to post the form of order
-  // const [weight, setWeight] = useState('');
-  // const [numberofitems, setNumberOfItems] = useState('');
-  const naviagte =useNavigate();
+  const activeMethods = useMemo(
+    () => config?.methods.filter((method) => method.enabled) || [],
+    [config],
+  );
+  const selectedMethod = activeMethods.find((method) => method.id === paymentMethod);
+  const estimate = (Number(weight) || 0) * (Number(config?.pricePerKg) || 0);
 
-  const handleSubmitOrder = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
-
-      const token = localStorage.getItem("token");
-      // console.log("token:",token)
-
-      if (!token) {
-        setError("No se encontró una sesión activa. Inicia sesión de nuevo.")
-        return;
-      }
-
-      const orderData = {
-        numberOfClothes: parseInt(numberofitems),
-        weight: parseInt(weight),
-      };
-
-      await axios.post("/api/user/submit-order", orderData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      naviagte("/user/submit-order/success");
-
-    } catch (error) {
-      setError(apiMessageEs(error.response?.data?.message, "No se pudo enviar el pedido"))
-    }
-    finally {
-      setLoading(false);
-    }
-
+  const selectMethod = (method) => {
+    setPaymentMethod(method.id);
+    setError('');
+    if (!method.requiresEvidence) setEvidence(null);
   };
 
-  // to check the inputs
-  const [weightError, setWeightError] = useState(null);
-  const [itemsError, setItemsError] = useState(null);
-
-  const checkInputs = () => {
-    if (!numberofitems || numberofitems <= 0) {
-      setItemsError("El número de prendas debe ser mayor que 0");
-      return
-
+  const onEvidenceChange = (event) => {
+    const file = event.target.files?.[0] || null;
+    if (!file) {
+      setEvidence(null);
+      return;
     }
-    if (!weight || weight <= 0) {
-      setWeightError("El peso debe ser mayor que 0");
-      return
+    const validationError = validateEvidenceFile(file);
+    if (validationError) {
+      event.target.value = '';
+      setEvidence(null);
+      setError(validationError);
+      return;
     }
-    setItemsError(null);
-    setWeightError(null);
-    setStep(step + 1);
-  }
+    setEvidence(file);
+    setError('');
+  };
 
+  const submitOrder = async (event) => {
+    event.preventDefault();
+    if (submitting) return;
+    setError('');
 
+    const clothes = Number(numberofitems);
+    const kilos = Number(weight);
+    if (!Number.isInteger(clothes) || clothes < 1) {
+      setError('El número de prendas debe ser un número entero mayor que cero.');
+      return;
+    }
+    if (!Number.isFinite(kilos) || kilos <= 0) {
+      setError('El peso debe ser mayor que cero.');
+      return;
+    }
+    if (!selectedMethod) {
+      setError('Selecciona un método de pago activo.');
+      return;
+    }
+    if (selectedMethod.requiresEvidence && !evidence) {
+      setError('Adjunta evidencia JPG, PNG, WebP o PDF para este método.');
+      return;
+    }
 
+    const formData = new FormData();
+    formData.append('numberOfClothes', String(clothes));
+    formData.append('weight', String(kilos));
+    formData.append('paymentMethod', selectedMethod.id);
+    if (evidence) formData.append('evidence', evidence);
+
+    setSubmitting(true);
+    try {
+      const { data } = await axios.post('/api/user/submit-order', formData);
+      // La confirmación utiliza exclusivamente el pedido recalculado por el servidor.
+      setSubmittedOrder(data.order);
+      navigate('/user/submit-order/success');
+    } catch (requestError) {
+      setError(apiMessageEs(requestError.response?.data?.message, 'No se pudo enviar el pedido.'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-
-    <>
-      {/* Sidebar */}
+    <div className="min-h-screen bg-gray-100">
       <Sidebar />
+      <main className="px-4 py-8 md:ml-64 md:px-8">
+        <form onSubmit={submitOrder} className="mx-auto max-w-4xl space-y-6" noValidate>
+          <header>
+            <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Nuevo pedido</p>
+            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Realizar pedido</h1>
+            <p className="mt-1 text-gray-600">Revisa tus datos, la cotización y el método antes de confirmar.</p>
+          </header>
 
-      
-    
+          {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-800">{error}</div>}
 
-        {/* Main Content */}
-        <div className="min-h-screen bg-gray-100 p-6 ml-0 md:ml-96 w-full">
           {loading ? (
-            <div className="fixed inset-0 flex items-center justify-center bg-gray-100 ">     
-                    <LoaderM />
-           </div>
-          ) : (
+            <div role="status" className="rounded-xl bg-white p-8 text-center shadow-sm">Cargando configuración…</div>
+          ) : config ? (
             <>
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">
-            Realizar pedido
-          </h2>
+              <section className="rounded-xl bg-white p-5 shadow-sm">
+                <h2 className="text-lg font-bold text-gray-900">Datos del pedido</h2>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <ReadOnlyField label="Nombre" value={user.name} />
+                  <ReadOnlyField label="Número de bolsa" value={user.bagNumber} />
+                  <ReadOnlyField label="Habitación" value={user.roomNumber} />
+                  <ReadOnlyField label="Edificio" value={user.buildingName} />
+                  <label className="block text-sm font-medium text-gray-700">
+                    Número de prendas
+                    <span className="mt-1 flex items-center rounded-lg border border-gray-300 px-3 focus-within:ring-2 focus-within:ring-blue-300">
+                      <Package className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                      <input type="number" min="1" step="1" required value={numberofitems} onChange={(event) => setNumberOfItems(event.target.value)} className="w-full px-3 py-3 outline-none" />
+                    </span>
+                  </label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Peso (kg)
+                    <span className="mt-1 flex items-center rounded-lg border border-gray-300 px-3 focus-within:ring-2 focus-within:ring-blue-300">
+                      <Scale className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                      <input type="number" min="0.01" step="0.01" required value={weight} onChange={(event) => setWeight(event.target.value)} className="w-full px-3 py-3 outline-none" />
+                    </span>
+                  </label>
+                </div>
+              </section>
 
-          {/* ✅ Display Loading & Error Messages */}
-          {error && <p className="text-red-600">{error}</p>}
-
-
-          {/* Stepper */}
-          <div className="flex justify-between sm:justify-start mt-6 space-x-6 sm:space-x-72">
-            <div
-              className={`flex flex-col items-center ${step === 1 ? "text-blue-600 font-medium" : "text-gray-400"
-                }`}
-            >
-              <Package
-                className={`w-10 h-10 p-2 rounded-full ${step === 1 ? "bg-blue-600  text-white" : "text-gray-400"
-                  }`}
-              />
-              <p className="text-sm sm:text-base ">Detalles del pedido</p>
-            </div>
-            <div
-              className={`flex flex-col items-center ${step === 2 ? "text-blue-600 font-medium" : "text-gray-400"
-                }`}
-            >
-              <Scale
-                className={`w-10 h-10  p-2 rounded-full ${step === 2 ? "bg-blue-600 text-white" : "text-gray-400"
-                  }`}
-              />
-              <p className="text-sm sm:text-base ">Peso y prendas</p>
-            </div>
-            <div
-              className={`flex flex-col items-center ${step === 3 ? "text-blue-600 font-medium" : "text-gray-400"
-                }`}
-            >
-              <DollarSign
-                className={`w-10 h-10  p-2 rounded-full ${step === 3 ? "bg-blue-600 text-white" : "text-gray-400"
-                  }`}
-              />
-              <p className="text-sm sm:text-base">Revisar y pagar</p>
-            </div>
-          </div>
-
-          {/* Step Content */}
-          <div className="bg-white p-6 rounded-lg shadow-lg mt-8 w-full max-w-4xl">
-            {step === 1 && (
-              <>
-                <h3 className="text-lg font-semibold">Detalles del pedido</h3>
-<p className="text-sm text-gray-500">
-  Completa los datos de tu pedido de lavandería
-</p>
-
-{/* Error Handling */}
-
-{weightError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-4xl mx-auto mt-4">
-                    <div className="flex items-start space-x-3">
-                      <div>
-                        <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                      </div>
-                      <div className="text-sm text-red-800">
-                        <p className="font-medium">Corrige los siguientes errores:</p>
-                        <ul className="list-disc pl-4 mt-1 space-y-1">
-                          <li>El peso debe ser mayor que 0</li>
-                        </ul>
-                      </div>
-                    </div>
+              <section className="rounded-xl bg-white p-5 shadow-sm" aria-labelledby="quote-title">
+                <h2 id="quote-title" className="text-lg font-bold text-gray-900">Cotización estimada</h2>
+                <div className="mt-3 flex flex-wrap items-end justify-between gap-3 rounded-lg bg-blue-50 p-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Tarifa: {formatMoney(config.pricePerKg, config.currency, config.locale)} por kg</p>
+                    <p className="text-xs text-gray-500">El servidor calcula y confirma el total final al guardar.</p>
                   </div>
-                )}
-                {itemsError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-4xl mx-auto mt-4">
-                    <div className="flex items-start space-x-3">
-                      <div>
-                        <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                      </div>
-                      <div className="text-sm text-red-800">
-                        <p className="font-medium">Corrige los siguientes errores:</p>
-                        <ul className="list-disc pl-4 mt-1 space-y-1">
-                          <li>El número de prendas debe ser mayor que 0</li>
-                        </ul>
-                      </div>
-                    </div>
+                  <p className="text-2xl font-bold text-blue-800">{formatMoney(estimate, config.currency, config.locale)}</p>
+                </div>
+              </section>
+
+              <section className="rounded-xl bg-white p-5 shadow-sm">
+                <fieldset>
+                  <legend className="text-lg font-bold text-gray-900">Método de pago</legend>
+                  <p className="mt-1 text-sm text-gray-600">Sólo se muestran los métodos habilitados por el negocio.</p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    {activeMethods.map((method) => {
+                      const Icon = methodIcons[method.id] || CreditCard;
+                      return (
+                        <label key={method.id} className={`cursor-pointer rounded-xl border-2 p-4 transition focus-within:ring-2 focus-within:ring-blue-400 ${paymentMethod === method.id ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}>
+                          <input type="radio" name="paymentMethod" value={method.id} checked={paymentMethod === method.id} onChange={() => selectMethod(method)} className="sr-only" />
+                          <Icon className="h-6 w-6 text-blue-700" aria-hidden="true" />
+                          <span className="mt-2 block font-semibold">{method.label}</span>
+                          <span className="block text-xs text-gray-600">{method.requiresEvidence ? 'Requiere evidencia' : 'Pago al entregar'}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {!activeMethods.length && <p role="alert" className="mt-3 text-red-700">No hay métodos de pago disponibles.</p>}
+                </fieldset>
+
+                {selectedMethod?.requiresEvidence && (
+                  <div className="mt-5 rounded-lg border border-dashed border-blue-300 bg-blue-50 p-4">
+                    <label htmlFor="order-evidence" className="flex cursor-pointer items-center gap-3 font-semibold text-blue-800">
+                      <Upload className="h-5 w-5" aria-hidden="true" />
+                      Adjuntar evidencia
+                    </label>
+                    <input id="order-evidence" type="file" required accept={EVIDENCE_ACCEPT} onChange={onEvidenceChange} className="mt-3 block w-full text-sm" />
+                    <p className="mt-2 text-xs text-gray-600">JPG, PNG, WebP o PDF. Máximo 2 MiB. No ingreses datos de tarjeta.</p>
+                    {evidence && <p className="mt-2 break-all text-sm font-medium text-green-800">Archivo: {evidence.name}</p>}
                   </div>
                 )}
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-  <div className="flex flex-col">
-    <label htmlFor="order-bag-number" className="text-base text-black">Número de bolsa</label>
-    <div className="flex items-center border rounded-lg p-3 bg-gray-50">
-      <Package className="w-5 h-5 text-gray-400 mr-2" />
-      <input
-        id="order-bag-number"
-        type="number"
-        placeholder="Número de bolsa"
-        value={user.bagNumber}
-        readOnly
-        className="w-full bg-transparent outline-none"
-      />
-    </div>
-  </div>
-  <div className="flex flex-col">
-    <label htmlFor="order-customer-name" className="text-base text-black">Nombre</label>
-    <div className="flex items-center border rounded-lg p-3 bg-gray-50">
-      <User className="w-5 h-5 text-gray-400 mr-2" />
-      <input
-        id="order-customer-name"
-        type="text"
-        placeholder="Nombre"
-        value={user.name}
-        readOnly
-        className="w-full bg-transparent outline-none"
-      />
-    </div>
-  </div>
-  <div className="flex flex-col">
-    <label htmlFor="order-room-number" className="text-base text-black">Número de habitación</label>
-    <div className="flex items-center border rounded-lg p-3 bg-gray-50">
-      <Building className="w-5 h-5 text-gray-400 mr-2" />
-      <input
-        id="order-room-number"
-        type="text"
-        placeholder="Número de habitación"
-        value={user.roomNumber}
-        className="w-full bg-transparent outline-none"
-        readOnly
-      />
-    </div>
-  </div>
-  <div className="flex flex-col">
-    <label htmlFor="order-building" className="text-base text-black">Edificio</label>
-    <div className="flex items-center border rounded-lg p-3 bg-gray-50">
-      <Home className="w-5 h-5 text-gray-400 mr-2" />
-      <input
-        id="order-building"
-        type="text"
-        placeholder="Edificio"
-        value={user.buildingName}
-        readOnly
-        className="w-full bg-transparent outline-none"
-      />
-    </div>
-  </div>
-  <div className="flex flex-col">
-    <label htmlFor="order-item-count" className="text-base text-black">Número de prendas</label>
-    <div className="flex items-center border rounded-lg p-3 bg-gray-50">
-      <Shirt className="w-5 h-5 text-gray-400 mr-2" />
-      <input
-        id="order-item-count"
-        type="number"
-        placeholder="Número de prendas"
-        value={numberofitems}
-        className="w-full bg-transparent outline-none"
-        onChange={(e) => setNumberOfItems(e.target.value)}
-      />
-    </div>
-  </div>
-  <div className="flex flex-col">
-    <label htmlFor="order-weight" className="text-base text-black">Peso en kilogramos</label>
-    <div className="flex items-center border rounded-lg p-3 bg-gray-50">
-      <Scale className="w-5 h-5 text-gray-400 mr-2" />
-      <input
-        id="order-weight"
-        type="number"
-        placeholder="Peso en kg"
-        value={weight}
-        className="w-full bg-transparent outline-none"
-        onChange={(e) => setWeight(e.target.value)}
-      />
-    </div>
-  </div>
-</div>
-
-              </>
-            )}
-            {step === 2 && (
-              <>
-                {" "}
-                <div className="bg-white rounded-lg border p-6 max-w-4xl mx-auto">
-                  <h2 className="text-xl font-semibold mb-2">
-                    Confirmación del pedido
-                  </h2>
-                  <p className="text-gray-600 mb-6">Revisa tu pedido cuidadosamente</p>
-
-                  <div className="bg-blue-50 rounded-lg p-6">
-                    <h3 className="text-lg font-medium mb-4">Resumen del pedido</h3>
-
-                    <div className="space-y-4 mb-6">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <Shirt className="w-5 h-5 text-gray-600" />
-                          <span className="text-gray-600">Prendas</span>
-                        </div>
-                        <span className="font-medium">{numberofitems} prendas</span>
-                      </div>
-
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <Scale className="w-5 h-5 text-gray-600" />
-                          <span className="text-gray-600">Peso (kg)</span>
-                        </div>
-                        <span className="font-medium">{weight} kg</span>
-                      </div>
-                    </div>
-
-                    <div className="border-t pt-4 space-y-2">
-                      <div className="flex justify-between text-gray-600">
-                        <span>Subtotal</span>
-                        <span>₹{price}</span>
-                      </div>
-                      <div className="flex justify-between text-blue-600 font-medium">
-                        <span>Total</span>
-                        <span>₹{price}</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 space-y-2 text-sm text-gray-600">
-                      <p>• Los precios incluyen la limpieza estándar y la manipulación</p>
-                      <p>• Pueden aplicarse cargos adicionales por el tratamiento de manchas</p>
-                      <p>• Peso mínimo del pedido: 2 kg</p>
-                    </div>
+                <div className="mt-6 border-t pt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Proveedores futuros</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(config.comingSoon || []).map((provider) => (
+                      <span key={provider} aria-disabled="true" className="rounded-full border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-500">{provider} · Próximamente</span>
+                    ))}
                   </div>
                 </div>
-              </>
-            )}
-            {/* Step 3: Revisar y pagarment */}
-            {step === 3 && (
-              <div className="bg-white rounded-lg border p-6 max-w-4xl mx-auto">
-                <h3 className="text-xl font-semibold mb-2">Revisión y pago</h3>
-                <p className="text-gray-600 mb-6">
-                  Revisa tu pedido y completa el pago
-                </p>
+              </section>
 
-                {/* Detalles del pedido */}
-                <div className="grid grid-cols-2 gap-4 text-sm mt-4 bg-blue-50 rounded-lg p-3">
-                  <div>
-                    <p className="text-muted-foreground text-gray-600 ">Nombre</p>
-                    <p className="font-medium">{user.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-gray-600 ">
-                      Número de bolsa
-                    </p>
-                    <p className="font-medium"> {user.bagNumber}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-gray-600 ">
-                      Número de habitación
-                    </p>
-                    <p className="font-medium">{user.roomNumber}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-gray-600 ">
-                      Nombre del edificio
-                    </p>
-                    <p className="font-medium">{user.buildingName}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-gray-600 ">
-                      Número de prendas
-                    </p>
-                    <p className="font-medium">{numberofitems} prendas</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-gray-600 ">
-                      Peso (kg)
-                    </p>
-                    <p className="font-medium">{weight}</p>
-                  </div>
-                </div>
+              <button type="submit" disabled={submitting || !activeMethods.length} className="w-full rounded-xl bg-blue-700 px-5 py-3 font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300">
+                {submitting ? 'Enviando pedido…' : 'Confirmar pedido'}
+              </button>
+            </>
+          ) : null}
+        </form>
+      </main>
+    </div>
+  );
+}
 
-                {/* Payment Options */}
-                <div className="flex justify-center mt-6">
-                  <button className="border p-4 rounded-lg flex flex-col items-center ">
-                    <QrCode
-                      className="h-6 w-6"
-                      onClick={() => setShowPayment(!showpayment)}
-                    />
-                    <span className="text-sm font-medium">Pago por UPI</span>
-                  </button>
-                </div>
-
-                {/* Código QR Payment */}
-                {showpayment && (
-                  <>
-                    <div className="flex flex-col items-center gap-2 py-6">
-                      <img
-                        src="#"
-                        alt="Código QR"
-                        className="h-40 w-40 border p-2 rounded-lg"
-                      />
-                      <p className="font-medium">Escanea el código QR para pagar</p>
-                      <p className="text-sm text-gray-500">
-                        O usa el ID de UPI: laundry@upi
-                      </p>
-                    </div>
-
-                    <div className="mt-4 flex flex-col items-center">
-                      {/* Hidden File Input */}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        className="hidden"
-                        id="uploadScreenshot"
-                      />
-
-                      {/* Upload Button */}
-                      <label
-                        htmlFor="uploadScreenshot"
-                        className="cursor-pointer bg-blue-500 text-white px-4 py-2 rounded-lg text-center w-full max-w-xs"
-                      >
-                        Subir captura del pago
-                      </label>
-
-                      {/* Show Uploaded Screenshot */}
-                      {screenshot && (
-                        <div className="mt-4 text-center">
-                          <p className="text-sm text-gray-600">
-                            Captura subida:
-                          </p>
-                          <img
-                            src={screenshot}
-                            alt="Captura del pago"
-                            className="h-32 w-32 sm:h-40 sm:w-40 border p-2 rounded-lg mx-auto"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Total Payment */}
-                    <div className="bg-blue-50 p-4 rounded-lg flex justify-between items-center mt-4">
-                      <div>
-                        <p className="text-sm text-blue-600">Total a pagar</p>
-                        <p className="text-xs text-blue-500">
-                          Incluye todas las tarifas del servicio
-                        </p>
-                      </div>
-                      <p className="text-2xl font-bold text-blue-600">₹{price}</p>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Navigation Buttons */}
-            <div className="flex justify-between mt-6">
-              {step > 1 && (
-                <button
-                  className="bg-gray-400 text-white px-6 py-2 rounded-lg"
-                  onClick={() => setStep(step - 1)}
-                >
-                  Atrás
-                </button>
-              )}
-
-              {step === 1 && (
-                <>
-                  <div></div>
-                  <button
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-                    onClick={checkInputs} // ✅ Validate before moving to Step 2
-                  >
-                    Continuar
-                  </button>
-                </>
-              )}
-              {step === 2 && (
-                <button
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-                  onClick={() => setStep(step + 1)}
-                >
-                  Continuar
-                </button>
-              )}
-              {step === 3 && (
-                <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
-                  onClick={handleSubmitOrder}>
-                  Realizar pedido
-                </button>
-              )}
-            </div>
-          </div>
-          </>
-          )}
-                 </div>
-      </>
-
-
-   
+function ReadOnlyField({ label, value }) {
+  return (
+    <div>
+      <p className="text-sm font-medium text-gray-700">{label}</p>
+      <p className="mt-1 min-h-12 rounded-lg bg-gray-50 px-3 py-3 text-gray-800">{value || 'No disponible'}</p>
+    </div>
   );
 }

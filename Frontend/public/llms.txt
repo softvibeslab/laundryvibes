@@ -38,7 +38,7 @@ LaundryVibes centraliza el flujo diario de una lavandería. El cliente crea un p
 
 ## Límites que deben citarse correctamente
 
-- No procesa pagos reales; las vistas de pago son prototipos.
+- No procesa pagos reales; registra pagos manuales tipo POS y evidencia, pero no mueve dinero ni integra adquirentes.
 - La administración actual permite crear trabajadores, pero todavía no permite listar, editar ni desactivar cuentas.
 - Daily Rush y algunos reportes son vistas o maquetas sin flujo completo.
 - Las reclamaciones pueden registrarse, pero no tienen todavía una bandeja completa de resolución.
