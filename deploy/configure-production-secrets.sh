@@ -17,8 +17,11 @@ if [[ "$mongo_uri" == *'<'* || "$mongo_uri" == *'>'* || "$mongo_uri" == *'***'* 
   printf '%s\n' 'Error: sustituye <db_password> y cualquier placeholder antes de continuar.' >&2
   exit 1
 fi
-if [[ "$mongo_uri" != */laundryvibes* ]]; then
-  printf '%s\n' 'Error: la URI debe seleccionar la base /laundryvibes antes de los parámetros.' >&2
+uri_without_query="${mongo_uri%%\?*}"
+authority_and_path="${uri_without_query#mongodb+srv://}"
+database_path="${authority_and_path#*/}"
+if [[ "$database_path" == "$authority_and_path" || "$database_path" != 'laundryvibes' ]]; then
+  printf '%s\n' 'Error: la URI debe seleccionar exactamente /laundryvibes antes de los parámetros.' >&2
   exit 1
 fi
 
