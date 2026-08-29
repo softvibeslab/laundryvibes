@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { RiTShirt2Line } from "react-icons/ri";
 import axios from "axios";
+import { apiMessageEs } from "../../utils/localization";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -26,9 +27,7 @@ const Login = () => {
       });
 
       // Handle successful login
-      setSuccess(`Welcome back, ${response.data.name}!`); // Set success message
-      console.log("Login successful:", response.data);
-
+      setSuccess(`¡Bienvenido de nuevo, ${response.data.name}!`); // Set success message
       if(response.status===200){
       
 
@@ -45,7 +44,7 @@ const Login = () => {
         setTimeout(() => {
           navigate("/user/userdashboard");
         }, 2000);
-      } else if (response.status === 200 && response.data.role === "worker") {
+      } else if (response.status === 200 && ["worker", "admin"].includes(response.data.role)) {
         setTimeout(() => {
           navigate("/workerdashboard");
         }, 2000);
@@ -54,9 +53,9 @@ const Login = () => {
       setSuccess("")
       // Handle specific error messages from the API
       if (error.response && error.response.data.message) {
-        setError(error.response.data.message); // Set error message from the API
+        setError(apiMessageEs(error.response.data.message));
       } else {
-        setError("An error occurred. Please try again."); // Generic error message
+        setError("Ocurrió un error. Inténtalo de nuevo."); // Generic error message
       }
     }finally{
       setLoading(false)
@@ -75,16 +74,16 @@ const Login = () => {
 
         {/* Header */}
         <h2 className="text-2xl font-semibold text-center text-gray-800 mb-2">
-          Welcome Back
+          Bienvenido de nuevo
         </h2>
         <p className="text-center text-gray-500 text-sm mb-6">
-          Sign in to your laundry account
+          Inicia sesión en tu cuenta de lavandería
         </p>
 
         {/* Success Message */}
         {success && (
           <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-400 text-green-700 text-sm rounded">
-            <span className="font-medium">Success:</span> {success}
+            <span className="font-medium">Éxito:</span> {success}
           </div>
         )}
 
@@ -103,12 +102,12 @@ const Login = () => {
               htmlFor="email"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Email
+              Correo electrónico
             </label>
             <input
               type="email"
               id="email"
-              placeholder="Enter your email"
+              placeholder="Ingresa tu correo electrónico"
               className="w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -120,12 +119,12 @@ const Login = () => {
               htmlFor="password"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Password
+              Contraseña
             </label>
             <input
               type="password"
               id="password"
-              placeholder="Enter your password"
+              placeholder="Ingresa tu contraseña"
               className="w-full px-4 py-2 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all"
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -139,29 +138,29 @@ const Login = () => {
       }`}
       disabled={loading}
     >
-      {loading ? 'Signing in...' : 'Sign in'}
+      {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
     </button>
         </form>
 
-        {/* Forgot Password Link */}
+        {/* Olvidé mi contraseña Link */}
         <div className="mt-4 text-center">
           <Link
             className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
             to="/forgot-password"
           >
-            Forgot your password?
+            ¿Olvidaste tu contraseña?
           </Link>
         </div>
 
         {/* Sign Up Link */}
         <div className="mt-4 text-center">
           <p className="text-sm text-gray-600">
-            Don't have an account?{" "}
+            ¿No tienes una cuenta?{" "}
             <Link
               to="/registration"
               className="text-blue-600 hover:text-blue-700 hover:underline"
             >
-              Sign up now
+              Regístrate ahora
             </Link>
           </p>
         </div>

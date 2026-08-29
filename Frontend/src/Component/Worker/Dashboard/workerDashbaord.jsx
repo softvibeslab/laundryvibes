@@ -3,6 +3,7 @@ import Navbar from '../Navbar/Navbar';
 import LoaderM from '../../../assets/loader/loader';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns'
+import { es } from 'date-fns/locale'
 // import { OrderContext } from '../../User/SubmitOrder/OrderContext';
 import NewOrder from './NewOrder';
 import GenerateReport from './GenerateReport';
@@ -32,8 +33,8 @@ const getMostRecentOrderByStatus  = (orders,status) => {
   const filteredOrders  = orders
   .filter(order => status ? order.status === status : true) // If status is provided, filter by it, otherwise get any order
   .sort((a, b) => {
-    const dateA = new Date(`${a.date} ${a.time}`);
-    const dateB = new Date(`${b.date} ${b.time}`);
+    const dateA = new Date(a.createdAt || `${a.date} ${a.time}`);
+    const dateB = new Date(b.createdAt || `${b.date} ${b.time}`);
     return dateB - dateA;
   });
 
@@ -82,18 +83,18 @@ function WorkerDashbaord() {
       
       // Calculate time ago for both orders
       if (recentNewOrder) {
-        const orderDate = new Date(`${recentNewOrder.date} ${recentNewOrder.time}`);
+        const orderDate = new Date(recentNewOrder.createdAt || `${recentNewOrder.date} ${recentNewOrder.time}`);
         setTimeAgo(prev => ({
           ...prev,
-          newOrder: formatDistanceToNow(orderDate, { addSuffix: true })
+          newOrder: formatDistanceToNow(orderDate, { addSuffix: true, locale: es })
         }));
       }
       
       if (recentCompletedOrder) {
-        const completedDate = new Date(`${recentCompletedOrder.date} ${recentCompletedOrder.time}`);
+        const completedDate = new Date(recentCompletedOrder.createdAt || `${recentCompletedOrder.date} ${recentCompletedOrder.time}`);
         setTimeAgo(prev => ({
           ...prev,
-          completedOrder: formatDistanceToNow(completedDate, { addSuffix: true })
+          completedOrder: formatDistanceToNow(completedDate, { addSuffix: true, locale: es })
         }));
       }
       
@@ -132,11 +133,11 @@ function WorkerDashbaord() {
       <div className="min-h-screen bg-gray-50 pt-12">
         {/* Main Content */}
         <main className="p-6 max-w-7xl mx-auto">
-          {/* Send Report Button */}
+          {/* Enviar informe Button */}
           <div className="flex justify-end mb-4">
             <button className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-2 sm:px-4 sm:py-2 rounded-md flex items-center justify-center text-sm sm:text-base w-32 sm:w-auto">
               <Send className="h-4 w-4 mr-2" />
-              <span className="ml-1">Send Report</span>
+              <span className="ml-1">Enviar informe</span>
             </button>
           </div>
 
@@ -146,10 +147,10 @@ function WorkerDashbaord() {
           {/* Greeting Card */}
           <div className="bg-blue-50 rounded-lg p-6 mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center">
             <div className="flex-1 sm:mb-0">
-              <h1 className="text-2xl font-bold text-gray-800">Good Afternoon</h1>
+              <h1 className="text-2xl font-bold text-gray-800">Buenas tardes</h1>
               <p className="text-gray-600 flex items-center mt-1">
                 <ClipboardList className="h-4 w-4 mr-2" />
-                {new Date().toLocaleDateString("en-US", {
+                {new Date().toLocaleDateString("es-MX", {
               weekday: "long",
               month: "long",
               day: "numeric",
@@ -165,38 +166,38 @@ function WorkerDashbaord() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {/* Total Orders */}
+            {/* Total de pedidos */}
             <div className="bg-white rounded-lg p-6 border-l-4 border-blue-500 shadow-sm">
             <div className="flex items-center justify-between">
-              <p className="text-gray-500 mb-2">Total Orders</p>
+              <p className="text-gray-500 mb-2">Total de pedidos</p>
              <Package className="h-5 w-5 text-blue-500" />
               </div>
 
               <p className="text-4xl font-bold ">{totalOrders}</p>
             </div>
 
-            {/* Completed Orders */}
+            {/* Pedidos completados */}
             <div className="bg-white rounded-lg p-6 border-l-4 border-green-500 shadow-sm">
               <div className="flex items-center justify-between">
-                <p className="text-gray-500 mb-2">Completed Orders</p>
+                <p className="text-gray-500 mb-2">Pedidos completados</p>
                 <CheckCircle className="h-5 w-5 text-green-500" />
               </div>
               <p className="text-4xl font-bold">{completeOrders}</p>
             </div>
 
-            {/* Pending Orders */}
+            {/* Pedidos pendientes */}
             <div className="bg-white rounded-lg p-6 border-l-4 border-yellow-500 shadow-sm">
               <div className="flex items-center justify-between">
-                <p className="text-gray-500 mb-2">Pending Orders</p>
+                <p className="text-gray-500 mb-2">Pedidos pendientes</p>
                 <Clock className="h-5 w-5 text-yellow-500" />
               </div>
               <p className="text-4xl font-bold">{pendingOrders}</p>
             </div>
 
-            {/* Completion Rate */}
+            {/* Tasa de finalización */}
             <div className="bg-white rounded-lg p-6 border-l-4 border-purple-500 shadow-sm">
               <div className="flex items-center justify-between">
-                <p className="text-gray-500 mb-2">Completion Rate</p>
+                <p className="text-gray-500 mb-2">Tasa de finalización</p>
                 <TrendingUp className="h-5 w-5 text-purple-500" />
               </div>
               <p className="text-4xl font-bold">
@@ -214,7 +215,7 @@ function WorkerDashbaord() {
             
              className="bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-lg flex flex-col items-center justify-center">
               <Plus className="h-6 w-6 mb-2" />
-              <span>New Order</span>
+              <span>Nuevo pedido</span>
             </button>
             <button
              onClick={()=>{
@@ -222,15 +223,15 @@ function WorkerDashbaord() {
             }} 
              className="bg-green-500 hover:bg-green-600 text-white p-4 rounded-lg flex flex-col items-center justify-center">
               <FileText className="h-6 w-6 mb-2" />
-              <span>Generate Report</span>
+              <span>Generar informe</span>
             </button>
             <button className="bg-purple-500 hover:bg-purple-600 text-white p-4 rounded-lg flex flex-col items-center justify-center">
               <RefreshCw className="h-6 w-6 mb-2" />
-              <span>Sync Stock</span>
+              <span>Sincronizar inventario</span>
             </button>
             <button className="bg-gray-500 hover:bg-gray-600 text-white p-4 rounded-lg flex flex-col items-center justify-center">
               <Settings className="h-6 w-6 mb-2" />
-              <span>Settings</span>
+              <span>Configuración</span>
             </button>
           </div>
 
@@ -248,15 +249,15 @@ function WorkerDashbaord() {
            />
           
 
-          {/* Recent Activity */}
+          {/* Actividad reciente */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center">
                 <Clock className="h-5 w-5 text-gray-500 mr-2" />
-                <h2 className="text-lg font-medium">Recent Activity</h2>
+                <h2 className="text-lg font-medium">Actividad reciente</h2>
               </div>
               <Link to='/worker/orders' className="text-blue-500 text-sm flex items-center">
-                View All
+                Ver todo
                 <ChevronRight className="h-4 w-4 ml-1" />
                 </Link>
             </div>
@@ -265,29 +266,29 @@ function WorkerDashbaord() {
               {/* Completed Order Activity */}
               {mostRecentCompletedOrder && (
                 <div className="border-b border-gray-100 pb-4">
-                  <h3 className="font-medium">Order Completed</h3>
+                  <h3 className="font-medium">Pedido completado</h3>
                   <p className="text-gray-600">
-                    Order #Bag-{mostRecentCompletedOrder.bagNumber} was marked as completed
+                    El pedido con bolsa n.º {mostRecentCompletedOrder.bagNumber} se marcó como completado
                   </p>
-                  <p className="text-gray-400 text-sm mt-1">{timeAgo.completedOrder || "Recently"}</p>
+                  <p className="text-gray-400 text-sm mt-1">{timeAgo.completedOrder || "Recientemente"}</p>
                 </div>
               )}
 
-              {/* New Order Activity */}
+              {/* Nuevo pedido Activity */}
               {mostRecentNewOrder && (
                 <div>
-                  <h3 className="font-medium">New Order</h3>
+                  <h3 className="font-medium">Nuevo pedido</h3>
                   <p className="text-gray-600">
-                    Order #Bag-{mostRecentNewOrder.bagNumber} was created
+                    Se creó el pedido con bolsa n.º {mostRecentNewOrder.bagNumber}
                   </p>
-                  <p className="text-gray-400 text-sm mt-1">{timeAgo.newOrder || "Recently"}</p>
+                  <p className="text-gray-400 text-sm mt-1">{timeAgo.newOrder || "Recientemente"}</p>
                 </div>
               )}
 
               {/* Show message if no activities */}
               {!mostRecentNewOrder && !mostRecentCompletedOrder && (
                 <div>
-                  <p className="text-gray-500">No recent activities to display.</p>
+                  <p className="text-gray-500">No hay actividad reciente para mostrar.</p>
                 </div>
               )}
             </div>

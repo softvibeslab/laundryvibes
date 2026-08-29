@@ -17,6 +17,7 @@ import {
 import Sidebar from "../Sidebar";
 import LoaderM from "../../../assets/loader/loader";
 import { useNavigate } from "react-router-dom";
+import { apiMessageEs } from "../../../utils/localization";
 
 export default function SubmitOrder() {
   const [step, setStep] = useState(1);
@@ -60,7 +61,7 @@ export default function SubmitOrder() {
 
         
       } catch (error) {
-        setError(error.response?.data?.message || error.message)
+        setError(apiMessageEs(error.response?.data?.message, 'No se pudieron cargar tus datos'))
       }
       finally {
         setLoading(false);
@@ -84,7 +85,7 @@ export default function SubmitOrder() {
       // console.log("token:",token)
 
       if (!token) {
-        console.error("No token found , plz login");
+        setError("No se encontró una sesión activa. Inicia sesión de nuevo.")
         return;
       }
 
@@ -99,7 +100,7 @@ export default function SubmitOrder() {
       naviagte("/user/submit-order/success");
 
     } catch (error) {
-      setError(error.response?.data?.message || "Unable to submit order")
+      setError(apiMessageEs(error.response?.data?.message, "No se pudo enviar el pedido"))
     }
     finally {
       setLoading(false);
@@ -113,12 +114,12 @@ export default function SubmitOrder() {
 
   const checkInputs = () => {
     if (!numberofitems || numberofitems <= 0) {
-      setItemsError("Number of items must be greater than 0");
+      setItemsError("El número de prendas debe ser mayor que 0");
       return
 
     }
     if (!weight || weight <= 0) {
-      setWeightError("Weight must be greater than 0");
+      setWeightError("El peso debe ser mayor que 0");
       return
     }
     setItemsError(null);
@@ -147,7 +148,7 @@ export default function SubmitOrder() {
           ) : (
             <>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">
-            Submit Order
+            Realizar pedido
           </h2>
 
           {/* ✅ Display Loading & Error Messages */}
@@ -164,7 +165,7 @@ export default function SubmitOrder() {
                 className={`w-10 h-10 p-2 rounded-full ${step === 1 ? "bg-blue-600  text-white" : "text-gray-400"
                   }`}
               />
-              <p className="text-sm sm:text-base ">Order Details</p>
+              <p className="text-sm sm:text-base ">Detalles del pedido</p>
             </div>
             <div
               className={`flex flex-col items-center ${step === 2 ? "text-blue-600 font-medium" : "text-gray-400"
@@ -174,7 +175,7 @@ export default function SubmitOrder() {
                 className={`w-10 h-10  p-2 rounded-full ${step === 2 ? "bg-blue-600 text-white" : "text-gray-400"
                   }`}
               />
-              <p className="text-sm sm:text-base ">Weight & Items</p>
+              <p className="text-sm sm:text-base ">Peso y prendas</p>
             </div>
             <div
               className={`flex flex-col items-center ${step === 3 ? "text-blue-600 font-medium" : "text-gray-400"
@@ -184,7 +185,7 @@ export default function SubmitOrder() {
                 className={`w-10 h-10  p-2 rounded-full ${step === 3 ? "bg-blue-600 text-white" : "text-gray-400"
                   }`}
               />
-              <p className="text-sm sm:text-base">Review & Pay</p>
+              <p className="text-sm sm:text-base">Revisar y pagar</p>
             </div>
           </div>
 
@@ -192,9 +193,9 @@ export default function SubmitOrder() {
           <div className="bg-white p-6 rounded-lg shadow-lg mt-8 w-full max-w-4xl">
             {step === 1 && (
               <>
-                <h3 className="text-lg font-semibold">Order Details</h3>
+                <h3 className="text-lg font-semibold">Detalles del pedido</h3>
 <p className="text-sm text-gray-500">
-  Fill in your laundry details
+  Completa los datos de tu pedido de lavandería
 </p>
 
 {/* Error Handling */}
@@ -206,9 +207,9 @@ export default function SubmitOrder() {
                         <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                       </div>
                       <div className="text-sm text-red-800">
-                        <p className="font-medium">Please fix the following errors:</p>
+                        <p className="font-medium">Corrige los siguientes errores:</p>
                         <ul className="list-disc pl-4 mt-1 space-y-1">
-                          <li>Weight must be greater than 0</li>
+                          <li>El peso debe ser mayor que 0</li>
                         </ul>
                       </div>
                     </div>
@@ -221,9 +222,9 @@ export default function SubmitOrder() {
                         <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                       </div>
                       <div className="text-sm text-red-800">
-                        <p className="font-medium">Please fix the following errors:</p>
+                        <p className="font-medium">Corrige los siguientes errores:</p>
                         <ul className="list-disc pl-4 mt-1 space-y-1">
-                          <li>Number of items must be greater than 0</li>
+                          <li>El número de prendas debe ser mayor que 0</li>
                         </ul>
                       </div>
                     </div>
@@ -232,12 +233,13 @@ export default function SubmitOrder() {
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
   <div className="flex flex-col">
-    <label className="text-base text-black">Bag Number</label>
+    <label htmlFor="order-bag-number" className="text-base text-black">Número de bolsa</label>
     <div className="flex items-center border rounded-lg p-3 bg-gray-50">
       <Package className="w-5 h-5 text-gray-400 mr-2" />
       <input
+        id="order-bag-number"
         type="number"
-        placeholder="Bag Number"
+        placeholder="Número de bolsa"
         value={user.bagNumber}
         readOnly
         className="w-full bg-transparent outline-none"
@@ -245,12 +247,13 @@ export default function SubmitOrder() {
     </div>
   </div>
   <div className="flex flex-col">
-    <label className="text-base text-black">Name</label>
+    <label htmlFor="order-customer-name" className="text-base text-black">Nombre</label>
     <div className="flex items-center border rounded-lg p-3 bg-gray-50">
       <User className="w-5 h-5 text-gray-400 mr-2" />
       <input
+        id="order-customer-name"
         type="text"
-        placeholder="Name"
+        placeholder="Nombre"
         value={user.name}
         readOnly
         className="w-full bg-transparent outline-none"
@@ -258,12 +261,13 @@ export default function SubmitOrder() {
     </div>
   </div>
   <div className="flex flex-col">
-    <label className="text-base text-black">Room Number</label>
+    <label htmlFor="order-room-number" className="text-base text-black">Número de habitación</label>
     <div className="flex items-center border rounded-lg p-3 bg-gray-50">
       <Building className="w-5 h-5 text-gray-400 mr-2" />
       <input
+        id="order-room-number"
         type="text"
-        placeholder="Room Number"
+        placeholder="Número de habitación"
         value={user.roomNumber}
         className="w-full bg-transparent outline-none"
         readOnly
@@ -271,12 +275,13 @@ export default function SubmitOrder() {
     </div>
   </div>
   <div className="flex flex-col">
-    <label className="text-base text-black">Building</label>
+    <label htmlFor="order-building" className="text-base text-black">Edificio</label>
     <div className="flex items-center border rounded-lg p-3 bg-gray-50">
       <Home className="w-5 h-5 text-gray-400 mr-2" />
       <input
+        id="order-building"
         type="text"
-        placeholder="Building"
+        placeholder="Edificio"
         value={user.buildingName}
         readOnly
         className="w-full bg-transparent outline-none"
@@ -284,12 +289,13 @@ export default function SubmitOrder() {
     </div>
   </div>
   <div className="flex flex-col">
-    <label className="text-base text-black">Number of Items</label>
+    <label htmlFor="order-item-count" className="text-base text-black">Número de prendas</label>
     <div className="flex items-center border rounded-lg p-3 bg-gray-50">
       <Shirt className="w-5 h-5 text-gray-400 mr-2" />
       <input
+        id="order-item-count"
         type="number"
-        placeholder="Number of Items"
+        placeholder="Número de prendas"
         value={numberofitems}
         className="w-full bg-transparent outline-none"
         onChange={(e) => setNumberOfItems(e.target.value)}
@@ -297,12 +303,13 @@ export default function SubmitOrder() {
     </div>
   </div>
   <div className="flex flex-col">
-    <label className="text-base text-black">Weight</label>
+    <label htmlFor="order-weight" className="text-base text-black">Peso en kilogramos</label>
     <div className="flex items-center border rounded-lg p-3 bg-gray-50">
       <Scale className="w-5 h-5 text-gray-400 mr-2" />
       <input
+        id="order-weight"
         type="number"
-        placeholder="Kg"
+        placeholder="Peso en kg"
         value={weight}
         className="w-full bg-transparent outline-none"
         onChange={(e) => setWeight(e.target.value)}
@@ -318,26 +325,26 @@ export default function SubmitOrder() {
                 {" "}
                 <div className="bg-white rounded-lg border p-6 max-w-4xl mx-auto">
                   <h2 className="text-xl font-semibold mb-2">
-                    Order Confirmation
+                    Confirmación del pedido
                   </h2>
-                  <p className="text-gray-600 mb-6">Check you order carefully</p>
+                  <p className="text-gray-600 mb-6">Revisa tu pedido cuidadosamente</p>
 
                   <div className="bg-blue-50 rounded-lg p-6">
-                    <h3 className="text-lg font-medium mb-4">Order Summary</h3>
+                    <h3 className="text-lg font-medium mb-4">Resumen del pedido</h3>
 
                     <div className="space-y-4 mb-6">
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
                           <Shirt className="w-5 h-5 text-gray-600" />
-                          <span className="text-gray-600">Items</span>
+                          <span className="text-gray-600">Prendas</span>
                         </div>
-                        <span className="font-medium">{numberofitems} Pices</span>
+                        <span className="font-medium">{numberofitems} prendas</span>
                       </div>
 
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
                           <Scale className="w-5 h-5 text-gray-600" />
-                          <span className="text-gray-600">Weight(kg)</span>
+                          <span className="text-gray-600">Peso (kg)</span>
                         </div>
                         <span className="font-medium">{weight} kg</span>
                       </div>
@@ -355,55 +362,55 @@ export default function SubmitOrder() {
                     </div>
 
                     <div className="mt-6 space-y-2 text-sm text-gray-600">
-                      <p>• Prices include standard cleaning and handling</p>
-                      <p>• Additional charges may apply for stain treatment</p>
-                      <p>• Minimum order weight: 2 kg</p>
+                      <p>• Los precios incluyen la limpieza estándar y la manipulación</p>
+                      <p>• Pueden aplicarse cargos adicionales por el tratamiento de manchas</p>
+                      <p>• Peso mínimo del pedido: 2 kg</p>
                     </div>
                   </div>
                 </div>
               </>
             )}
-            {/* Step 3: Review & Payment */}
+            {/* Step 3: Revisar y pagarment */}
             {step === 3 && (
               <div className="bg-white rounded-lg border p-6 max-w-4xl mx-auto">
-                <h3 className="text-xl font-semibold mb-2">Review and Payment</h3>
+                <h3 className="text-xl font-semibold mb-2">Revisión y pago</h3>
                 <p className="text-gray-600 mb-6">
-                  Review your order and complete payment
+                  Revisa tu pedido y completa el pago
                 </p>
 
-                {/* Order Details */}
+                {/* Detalles del pedido */}
                 <div className="grid grid-cols-2 gap-4 text-sm mt-4 bg-blue-50 rounded-lg p-3">
                   <div>
-                    <p className="text-muted-foreground text-gray-600 ">Name</p>
+                    <p className="text-muted-foreground text-gray-600 ">Nombre</p>
                     <p className="font-medium">{user.name}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-gray-600 ">
-                      Bag Number
+                      Número de bolsa
                     </p>
                     <p className="font-medium"> {user.bagNumber}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-gray-600 ">
-                      Room Number
+                      Número de habitación
                     </p>
                     <p className="font-medium">{user.roomNumber}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-gray-600 ">
-                      Building Name
+                      Nombre del edificio
                     </p>
                     <p className="font-medium">{user.buildingName}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-gray-600 ">
-                      Number of Items
+                      Número de prendas
                     </p>
-                    <p className="font-medium">{numberofitems} Pieces</p>
+                    <p className="font-medium">{numberofitems} prendas</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-gray-600 ">
-                      Weight (kg)
+                      Peso (kg)
                     </p>
                     <p className="font-medium">{weight}</p>
                   </div>
@@ -416,22 +423,22 @@ export default function SubmitOrder() {
                       className="h-6 w-6"
                       onClick={() => setShowPayment(!showpayment)}
                     />
-                    <span className="text-sm font-medium">UPI Payment</span>
+                    <span className="text-sm font-medium">Pago por UPI</span>
                   </button>
                 </div>
 
-                {/* QR Code Payment */}
+                {/* Código QR Payment */}
                 {showpayment && (
                   <>
                     <div className="flex flex-col items-center gap-2 py-6">
                       <img
                         src="#"
-                        alt="QR Code"
+                        alt="Código QR"
                         className="h-40 w-40 border p-2 rounded-lg"
                       />
-                      <p className="font-medium">Scan QR Code to Pay</p>
+                      <p className="font-medium">Escanea el código QR para pagar</p>
                       <p className="text-sm text-gray-500">
-                        Or use UPI ID: laundry@upi
+                        O usa el ID de UPI: laundry@upi
                       </p>
                     </div>
 
@@ -450,18 +457,18 @@ export default function SubmitOrder() {
                         htmlFor="uploadScreenshot"
                         className="cursor-pointer bg-blue-500 text-white px-4 py-2 rounded-lg text-center w-full max-w-xs"
                       >
-                        Upload Payment Screenshot
+                        Subir captura del pago
                       </label>
 
                       {/* Show Uploaded Screenshot */}
                       {screenshot && (
                         <div className="mt-4 text-center">
                           <p className="text-sm text-gray-600">
-                            Uploaded Screenshot:
+                            Captura subida:
                           </p>
                           <img
                             src={screenshot}
-                            alt="Payment Screenshot"
+                            alt="Captura del pago"
                             className="h-32 w-32 sm:h-40 sm:w-40 border p-2 rounded-lg mx-auto"
                           />
                         </div>
@@ -471,9 +478,9 @@ export default function SubmitOrder() {
                     {/* Total Payment */}
                     <div className="bg-blue-50 p-4 rounded-lg flex justify-between items-center mt-4">
                       <div>
-                        <p className="text-sm text-blue-600">Total to Pay</p>
+                        <p className="text-sm text-blue-600">Total a pagar</p>
                         <p className="text-xs text-blue-500">
-                          Including all service fees
+                          Incluye todas las tarifas del servicio
                         </p>
                       </div>
                       <p className="text-2xl font-bold text-blue-600">₹{price}</p>
@@ -490,7 +497,7 @@ export default function SubmitOrder() {
                   className="bg-gray-400 text-white px-6 py-2 rounded-lg"
                   onClick={() => setStep(step - 1)}
                 >
-                  Back
+                  Atrás
                 </button>
               )}
 
@@ -501,7 +508,7 @@ export default function SubmitOrder() {
                     className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
                     onClick={checkInputs} // ✅ Validate before moving to Step 2
                   >
-                    Continue
+                    Continuar
                   </button>
                 </>
               )}
@@ -510,13 +517,13 @@ export default function SubmitOrder() {
                   className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
                   onClick={() => setStep(step + 1)}
                 >
-                  Continue
+                  Continuar
                 </button>
               )}
               {step === 3 && (
                 <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
                   onClick={handleSubmitOrder}>
-                  Submit Order
+                  Realizar pedido
                 </button>
               )}
             </div>

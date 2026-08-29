@@ -17,7 +17,7 @@ const Navbar = () => {
             }
           >
             <LayoutGrid className="h-5 w-5 mr-1 sm:mr-2" />
-            <span>Dashboard</span>
+            <span>Panel</span>
           </NavLink>
           <NavLink
             to="/worker/orders"
@@ -28,7 +28,7 @@ const Navbar = () => {
             }
           >
             <Package className="h-5 w-5 mr-1 sm:mr-2" />
-            <span>Orders</span>
+            <span>Pedidos</span>
           </NavLink>
           <NavLink
             to="/stock"
@@ -39,7 +39,7 @@ const Navbar = () => {
             }
           >
             <Bell className="h-5 w-5 mr-1 sm:mr-2" />
-            <span>Stock</span>
+            <span>Inventario</span>
           </NavLink>
         </div>
       </div>

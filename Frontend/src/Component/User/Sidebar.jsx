@@ -8,7 +8,8 @@ import { CiWarning } from "react-icons/ci";
 import { NavLink, Link,useNavigate } from "react-router-dom";
 import { LogOut } from 'lucide-react'
 import { toast,ToastContainer } from "react-toastify"; 
-import "react-toastify/dist/ReactToastify.css";
+import 'react-toastify/dist/ReactToastify.css';
+import ToastCloseButton from '../ToastCloseButton';
 
 
 function Sidebar() {
@@ -27,7 +28,7 @@ const navigate =useNavigate();
   const logout =()=>{
     localStorage.removeItem("token");
     setIsOpen(false)
-    toast.success("Logout Successful");
+    toast.success("Sesión cerrada correctamente");
 
     setTimeout(()=>{
       navigate('/login')
@@ -36,7 +37,7 @@ const navigate =useNavigate();
 
   return (
     <>
-    <ToastContainer />
+    <ToastContainer aria-label="Notificaciones" closeButton={ToastCloseButton} />
     <div className="relative">
       {/* Hamburger Menu */}
       <button
@@ -76,7 +77,7 @@ const navigate =useNavigate();
       >
         {/* Header */}
         <div className="p-6 px-8">
-          <h1 className="text-2xl font-bold text-black">Laundry</h1>
+          <h1 className="text-2xl font-bold text-black">LaundryVibes</h1>
         </div>
 
         {/* Menu */}
@@ -94,7 +95,7 @@ const navigate =useNavigate();
               <span className="text-xl mr-4">
                 <MdOutlineDashboard />
               </span>
-              <span>Dashboard</span>
+              <span>Panel</span>
             </NavLink>
 
             <NavLink
@@ -109,7 +110,7 @@ const navigate =useNavigate();
               <span className="text-xl mr-4">
                 <RiTShirt2Line />
               </span>
-              <span>Submit Order</span>
+              <span>Realizar pedido</span>
             </NavLink>
 
             <NavLink
@@ -124,7 +125,7 @@ const navigate =useNavigate();
               <span className="text-xl mr-4">
                 <RiHistoryFill />
               </span>
-              <span> Order History</span>
+              <span> Historial de pedidos</span>
             </NavLink>
 
             <NavLink
@@ -139,7 +140,7 @@ const navigate =useNavigate();
               <span className="text-xl mr-4">
                 <FaRegChartBar />
               </span>
-              <span>Daily Rush</span>
+              <span>Horas de mayor demanda</span>
             </NavLink>
 
             <NavLink
@@ -155,7 +156,7 @@ const navigate =useNavigate();
                 <RiAccountCircleLine />
               </span>
 
-              <span>Profile</span>
+              <span>Perfil</span>
             </NavLink>
 
             <NavLink
@@ -169,7 +170,7 @@ const navigate =useNavigate();
             >
               <span className="text-xl mr-4">
                 <CiWarning />              </span>
-              <span>Complaint</span>
+              <span>Reclamación</span>
             </NavLink>
           </ul>
         </nav>
@@ -178,7 +179,7 @@ const navigate =useNavigate();
             className="flex items-center w-full px-4 py-3 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
           onClick={logout}>
             <LogOut className="w-5 h-5 mr-3" />
-            Logout
+            Cerrar sesión
           </button>
         </div>
       </div>

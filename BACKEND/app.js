@@ -19,15 +19,15 @@ function createApp(config) {
   const corsOptions = {
     origin(origin, callback) {
       if (!origin || config.corsOrigins.includes(origin)) return callback(null, true);
-      const error = new Error('Origin not allowed'); error.status = 403; return callback(error);
+      const error = new Error('Origen no permitido'); error.status = 403; return callback(error);
     },
     credentials: true,
   };
   app.use(helmet());
   app.use(cors(corsOptions));
   app.use(express.json({ limit: config.payloadLimit }));
-  app.use('/api/user/login', rateLimit({ windowMs: 15 * 60_000, limit: 10, standardHeaders: 'draft-7', legacyHeaders: false }));
-  app.use('/api/user/forgot-password', rateLimit({ windowMs: 60 * 60_000, limit: 5, standardHeaders: 'draft-7', legacyHeaders: false }));
+  app.use('/api/user/login', rateLimit({ windowMs: 15 * 60_000, limit: 10, standardHeaders: 'draft-7', legacyHeaders: false, message: { message: 'Demasiados intentos. Inténtalo de nuevo más tarde.' } }));
+  app.use('/api/user/forgot-password', rateLimit({ windowMs: 60 * 60_000, limit: 5, standardHeaders: 'draft-7', legacyHeaders: false, message: { message: 'Demasiadas solicitudes. Inténtalo de nuevo más tarde.' } }));
   app.get('/api/health/live', (req, res) => res.json({ status: 'ok' }));
   app.get('/api/health/ready', (req, res) => {
     const ready = require('mongoose').connection.readyState === 1;

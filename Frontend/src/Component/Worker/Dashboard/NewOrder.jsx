@@ -23,12 +23,13 @@ function NewOrder({isOpen,onClose}) {
                 </svg>
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Create New Order</h2>
-                <p className="text-gray-500 text-sm">Fill in the details for the new order</p>
+                <h2 className="text-xl font-semibold text-gray-900">Crear nuevo pedido</h2>
+                <p className="text-gray-500 text-sm">Completa los datos del nuevo pedido</p>
               </div>
             </div>
             <button 
             onClick={onClose}
+            aria-label="Cerrar"
             className="text-gray-400 hover:text-gray-500">
               <X className="w-6 h-6" />
             </button>
@@ -39,27 +40,27 @@ function NewOrder({isOpen,onClose}) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Customer Name
+                  Nombre del cliente
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type="text"
                     className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter customer name"
+                    placeholder="Ingresa el nombre del cliente"
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
+                  Número de teléfono
                 </label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type="tel"
                     className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter phone number"
+                    placeholder="Ingresa el número de teléfono"
                   />
                 </div>
               </div>
@@ -67,26 +68,28 @@ function NewOrder({isOpen,onClose}) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Delivery Address
+                Dirección de entrega
               </label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
                   className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter delivery address"
+                  placeholder="Ingresa la dirección de entrega"
                 />
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Delivery Date
+                Fecha de entrega
               </label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="date"
+                  lang="es"
+                  aria-label="Fecha de entrega"
                   className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="dd-mm-yyyy"
                 />
@@ -96,12 +99,12 @@ function NewOrder({isOpen,onClose}) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Additional Notes
+                Notas adicionales
               </label>
               <textarea
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={4}
-                placeholder="Any special instructions..."
+                placeholder="Cualquier instrucción especial..."
               />
             </div>
 
@@ -110,7 +113,7 @@ function NewOrder({isOpen,onClose}) {
               className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               <span className="text-lg">+</span>
-              <span>Create Order</span>
+              <span>Crear pedido</span>
             </button>
           </form>
         </div>

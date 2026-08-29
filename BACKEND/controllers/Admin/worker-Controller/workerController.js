@@ -7,7 +7,7 @@ const createWorker = async (req, res, next) => {
   if (!email || !password) {
     return res
       .status(400)
-      .json({ message: "Email and password are required." });
+      .json({ message: "El correo electrónico y la contraseña son obligatorios." });
   }
 
   try {
@@ -15,7 +15,7 @@ const createWorker = async (req, res, next) => {
     if (existingWorker) {
       return res
         .status(400)
-        .json({ message: "Worker already exists with this email." });
+        .json({ message: "Ya existe un trabajador con este correo electrónico." });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -26,7 +26,7 @@ const createWorker = async (req, res, next) => {
     });
     await newWorker.save();
 
-    res.status(201).json({ message: "Worker added successfully", worker: { id: newWorker._id, email: newWorker.email, role: newWorker.role } });
+    res.status(201).json({ message: "Trabajador añadido correctamente", worker: { id: newWorker._id, email: newWorker.email, role: newWorker.role } });
   } catch (error) { return next(error); }
 };
 
