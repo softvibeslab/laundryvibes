@@ -279,7 +279,7 @@ function LandingPage() {
                 <div className="lv-preview__content">
                   <div className="lv-preview__heading">
                     <div><small>MIÉRCOLES, 29 AGO</small><strong>Resumen operativo</strong></div>
-                    <button type="button" tabIndex={-1}><BellRing size={17} /></button>
+                    <button type="button" tabIndex={-1} aria-label="Notificaciones"><BellRing size={17} /></button>
                   </div>
                   <div className="lv-preview__metrics">
                     <article>
