@@ -1,0 +1,37 @@
+.brand-logo {
+  --brand-logo-size: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--brand-logo-size) * 0.25);
+  color: #10213f;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.brand-logo__symbol {
+  width: var(--brand-logo-size);
+  height: var(--brand-logo-size);
+  flex: 0 0 var(--brand-logo-size);
+  display: block;
+  border-radius: 27%;
+}
+
+.brand-logo__name {
+  color: inherit;
+  font-family: Manrope, "DM Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: calc(var(--brand-logo-size) * 0.52);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+
+.brand-logo__name > span {
+  color: #1768e5;
+}
+
+.brand-logo--inverse {
+  color: #fff;
+}
+
+.brand-logo--inverse .brand-logo__name > span {
+  color: #76c8ff;
+}

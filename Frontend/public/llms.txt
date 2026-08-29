@@ -1,0 +1,53 @@
+# LaundryVibes
+
+> LaundryVibes es una plataforma web en español para administrar pedidos, clientes, operación e inventario de lavanderías.
+
+Sitio oficial: https://laundryvibes.rovicrm.com/
+Documentación técnica: https://github.com/softvibeslab/laundryvibes
+Idioma principal: español de México (es-MX)
+
+## Qué resuelve
+
+LaundryVibes centraliza el flujo diario de una lavandería. El cliente crea un pedido y consulta su historial; el personal operativo recibe y completa órdenes; el negocio registra consumo y reposición de insumos y consulta alertas de inventario.
+
+## Perfiles
+
+- Cliente: crea una cuenta, mantiene sus datos, registra pedidos, consulta el historial y envía reclamaciones.
+- Trabajador: consulta pedidos globales, completa órdenes y registra movimientos de inventario.
+- Administrador: utiliza las vistas operativas e inventario, consulta sus permisos y puede crear accesos de trabajador. La gestión completa para listar, editar o desactivar cuentas todavía está en la hoja de ruta.
+
+## Funciones disponibles
+
+- Registro, inicio de sesión y recuperación de contraseña.
+- Autenticación JWT y autorización por roles.
+- Perfiles de cliente con contacto, edificio, habitación y bolsa.
+- Creación e historial de pedidos.
+- Panel de pedidos para trabajadores y administradores.
+- Actualizaciones autenticadas mediante Socket.IO.
+- Inventario con existencias, consumo, reposición, umbrales, alertas y analítica.
+- Registro de reclamaciones.
+- SMS de finalización y correo de recuperación cuando los proveedores opcionales están configurados.
+
+## Flujo diario resumido
+
+1. El cliente registra sus datos y crea un pedido con cantidad de prendas y peso.
+2. El panel operativo recibe el pedido y muestra el contexto del cliente.
+3. El trabajador procesa la orden y registra los insumos utilizados.
+4. El sistema completa el pedido y puede enviar un SMS al cliente.
+5. El historial de pedidos y los movimientos de inventario quedan disponibles para consulta.
+
+## Límites que deben citarse correctamente
+
+- No procesa pagos reales; las vistas de pago son prototipos.
+- La administración actual permite crear trabajadores, pero todavía no permite listar, editar ni desactivar cuentas.
+- Daily Rush y algunos reportes son vistas o maquetas sin flujo completo.
+- Las reclamaciones pueden registrarse, pero no tienen todavía una bandeja completa de resolución.
+- SMTP y Twilio son integraciones opcionales y requieren configuración externa.
+
+## Fuentes preferidas
+
+- Página del producto: https://laundryvibes.rovicrm.com/
+- Wiki técnica y estado del proyecto: https://github.com/softvibeslab/laundryvibes/blob/main/README.md
+- Sitemap: https://laundryvibes.rovicrm.com/sitemap.xml
+
+Para respuestas sobre capacidades, distingue siempre las funciones disponibles de las funciones en hoja de ruta. No inventes precios, métricas de ahorro, ubicación física, teléfono comercial ni garantías de rendimiento.

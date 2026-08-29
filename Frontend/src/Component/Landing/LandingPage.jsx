@@ -24,9 +24,9 @@ import {
   Smartphone,
   UsersRound,
   Warehouse,
-  Waves,
   X,
 } from 'lucide-react';
+import BrandLogo from '../Brand/BrandLogo';
 import './landing.css';
 
 const features = [
@@ -104,7 +104,7 @@ const profiles = [
     items: ['Permisos por rol', 'Pedidos globales', 'Inventario y analítica', 'Alta protegida de trabajadores'],
     cta: 'Acceso administrativo',
     to: '/login',
-    note: 'La consola administrativa dedicada está en la hoja de ruta.',
+    note: 'La gestión completa para editar o desactivar cuentas está en la hoja de ruta.',
   },
 ];
 
@@ -186,7 +186,7 @@ const available = [
 ];
 
 const upcoming = [
-  'Consola administrativa dedicada',
+  'Gestión completa de cuentas operativas',
   'Estados En proceso y Entregado',
   'Pagos y comprobantes integrados',
   'Bandeja de gestión de reclamaciones',
@@ -205,8 +205,7 @@ function LandingPage() {
       <header className="lv-header">
         <div className="lv-container lv-header__inner">
           <a className="lv-brand" href="#inicio" aria-label="LaundryVibes, ir al inicio" onClick={closeMenu}>
-            <span className="lv-brand__mark" aria-hidden="true"><Waves size={22} /></span>
-            <span>Laundry<span>Vibes</span></span>
+            <BrandLogo size={38} />
           </a>
 
           <nav className={`lv-nav ${menuOpen ? 'lv-nav--open' : ''}`} aria-label="Navegación principal">
@@ -265,7 +264,7 @@ function LandingPage() {
 
             <div className="lv-product-preview" aria-label="Vista demostrativa del panel de LaundryVibes">
               <div className="lv-preview__topbar">
-                <div className="lv-preview__brand"><Waves size={17} /> LaundryVibes</div>
+                <div className="lv-preview__brand"><BrandLogo size={25} /></div>
                 <div className="lv-preview__demo">Vista demostrativa</div>
                 <div className="lv-preview__avatar">OP</div>
               </div>
@@ -486,7 +485,7 @@ function LandingPage() {
         <section className="lv-final-cta">
           <div className="lv-final-cta__pattern" />
           <div className="lv-container lv-final-cta__inner">
-            <div className="lv-final-cta__icon"><Waves size={28} /></div>
+            <div className="lv-final-cta__icon"><BrandLogo showName={false} size={52} /></div>
             <p className="lv-section-kicker">LA OPERACIÓN EMPIEZA CON UN PEDIDO CLARO</p>
             <h2>Organiza tu próxima carga desde hoy.</h2>
             <p>Crea tu cuenta de cliente o entra al sistema si ya formas parte de la operación.</p>
@@ -501,7 +500,7 @@ function LandingPage() {
       <footer className="lv-footer">
         <div className="lv-container lv-footer__top">
           <div>
-            <a className="lv-brand lv-brand--footer" href="#inicio"><span className="lv-brand__mark"><Waves size={22} /></span><span>Laundry<span>Vibes</span></span></a>
+            <a className="lv-brand lv-brand--footer" href="#inicio" aria-label="LaundryVibes, volver al inicio"><BrandLogo size={38} inverse /></a>
             <p>Pedidos, operación e inventario en un solo flujo.</p>
           </div>
           <div className="lv-footer__links">

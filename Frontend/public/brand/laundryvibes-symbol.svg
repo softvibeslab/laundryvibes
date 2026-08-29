@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Símbolo de LaundryVibes</title>
+  <desc id="desc">Lavadora blanca con agua y destellos sobre un fondo azul</desc>
+  <defs>
+    <linearGradient id="bg" x1="32" y1="20" x2="224" y2="236" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#287AF0"/>
+      <stop offset="1" stop-color="#0E4FB9"/>
+    </linearGradient>
+    <linearGradient id="water" x1="77" y1="145" x2="181" y2="190" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#64D9E8"/>
+      <stop offset="1" stop-color="#27A9D4"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="66" fill="url(#bg)"/>
+  <path d="M62 65c0-12.15 9.85-22 22-22h88c12.15 0 22 9.85 22 22v126c0 12.15-9.85 22-22 22H84c-12.15 0-22-9.85-22-22V65Z" fill="#fff"/>
+  <path d="M62 82h132" stroke="#BFD8FA" stroke-width="8"/>
+  <circle cx="82" cy="63" r="7" fill="#1768E5"/>
+  <circle cx="101" cy="63" r="7" fill="#15A88A"/>
+  <rect x="146" y="56" width="30" height="8" rx="4" fill="#1768E5"/>
+  <circle cx="128" cy="145" r="48" fill="#EAF3FF" stroke="#153F72" stroke-width="9"/>
+  <clipPath id="drum"><circle cx="128" cy="145" r="39"/></clipPath>
+  <g clip-path="url(#drum)">
+    <path d="M82 150c15-12 28-12 41 0 13 12 27 12 43 0 9-7 17-9 25-7v48H77v-34c2-2 3-4 5-7Z" fill="url(#water)"/>
+    <path d="M81 166c15-12 29-12 42 0 13 12 27 12 43 0 9-7 17-9 25-7" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+  </g>
+  <path d="m209 39 4.5 11.5L225 55l-11.5 4.5L209 71l-4.5-11.5L193 55l11.5-4.5L209 39Z" fill="#9DE7EF"/>
+  <path d="m45 174 3.5 8.5L57 186l-8.5 3.5L45 198l-3.5-8.5L33 186l8.5-3.5L45 174Z" fill="#fff"/>
+</svg>

@@ -4,8 +4,8 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const User = require('../../../models/user');
 const Worker = require('../../../models/Worker/workerModel');
+const { normalizeEmail, isValidEmail, isValidPassword } = require('../../../utils/credentials');
 
-const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 const publicUser = (doc) => ({ id: String(doc._id), name: doc.name, email: doc.email, role: doc.role });
 
 async function registerUser(req, res, next) {
@@ -14,9 +14,15 @@ async function registerUser(req, res, next) {
     const email = normalizeEmail(req.body.email);
     if (![name, email, phoneNumber, buildingName, roomNumber, bagNumber, password, confirmPassword].every(Boolean))
       return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
-    if (password !== confirmPassword || password.length < 8)
+    if (!isValidEmail(email))
+      return res.status(400).json({ message: 'Ingresa un correo electrónico válido.' });
+    if (password !== confirmPassword || !isValidPassword(password))
       return res.status(400).json({ message: 'Las contraseñas deben coincidir y contener al menos 8 caracteres.' });
-    if (await User.exists({ $or: [{ email }, { phoneNumber }] }))
+    const [existingUser, existingWorker] = await Promise.all([
+      User.exists({ $or: [{ email }, { phoneNumber }] }),
+      Worker.exists({ email }),
+    ]);
+    if (existingUser || existingWorker)
       return res.status(409).json({ message: 'Ya existe una cuenta con esos datos.' });
     const created = await User.create({ name, email, phoneNumber, buildingName, roomNumber, bagNumber, password: await bcrypt.hash(password, 12) });
     return res.status(201).json({ success: true, message: 'Usuario registrado correctamente', user: publicUser(created) });
@@ -33,7 +39,8 @@ async function loginUser(req, res, next) {
       return res.status(401).json({ message: 'El correo electrónico o la contraseña no son válidos' });
     const config = req.app.locals.config;
     const token = jwt.sign({ userId: String(account._id), role: account.role }, config.jwtSecret, { expiresIn: config.jwtExpiresIn, subject: String(account._id) });
-    return res.json({ success: true, message: 'Inicio de sesión correcto', token, name: account.name, userId: account._id, role: account.role });
+    const name = account.name || (account.role === 'admin' ? 'Administrador' : 'Trabajador');
+    return res.json({ success: true, message: 'Inicio de sesión correcto', token, name, userId: account._id, role: account.role });
   } catch (error) { return next(error); }
 }
 

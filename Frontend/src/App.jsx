@@ -18,15 +18,21 @@ import OrderManagement from './Component/Worker/OrdersManagement/OrderManagement
 import Stock from './Component/Worker/Stock/Stock.jsx';
 import ProtectedRoute from './Component/ProtectedRoute.jsx';
 import LandingPage from './Component/Landing/LandingPage.jsx';
+import PageMetadata from './Component/SEO/PageMetadata.jsx';
+import OperationsSettings from './Component/Worker/Settings/OperationsSettings.jsx';
+import NotFound from './Component/SEO/NotFound.jsx';
 
 
 function App() {
   const user = (content) => <ProtectedRoute roles={['user']}>{content}</ProtectedRoute>;
   const worker = (content) => <ProtectedRoute roles={['worker', 'admin']}>{content}</ProtectedRoute>;
+  const admin = (content) => <ProtectedRoute roles={['admin']}>{content}</ProtectedRoute>;
+  const workerOnly = (content) => <ProtectedRoute roles={['worker']}>{content}</ProtectedRoute>;
 
   return (
     <>
     <BrowserRouter>
+    <PageMetadata />
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/registration" element={<Registration />} />
@@ -46,8 +52,12 @@ function App() {
 
     {/* worker starts  */}
     <Route path="/workerdashboard" element={worker(<WorkerDashbaord />)} />
+    <Route path="/admin/dashboard" element={admin(<WorkerDashbaord />)} />
     <Route path="/worker/orders" element={worker(<OrderManagement />)} />
     <Route path="/stock" element={worker(<Stock />)} />
+    <Route path="/worker/settings" element={workerOnly(<OperationsSettings />)} />
+    <Route path="/admin/settings" element={admin(<OperationsSettings />)} />
+    <Route path="*" element={<NotFound />} />
     </Routes>
     </BrowserRouter>
     </>

@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import {useParams,useNavigate} from 'react-router-dom'
-import icon from '../../assets/forgotpassword.png';
 import axios from 'axios';
 import { apiMessageEs } from '../../utils/localization';
+import BrandLogo from '../Brand/BrandLogo';
 
 const ResetPassword = () => {
 const {token} = useParams();
@@ -43,9 +43,8 @@ try{
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
     <div className="w-full max-w-sm sm:max-w-md bg-white p-6 rounded-lg shadow-lg">
-      {/* Icon */}
       <div className="flex justify-center mb-4">
-        <img src={icon} className="h-12 w-12" alt="Ícono de seguridad" />
+        <BrandLogo size={48} />
       </div>
 
       {/* Title */}

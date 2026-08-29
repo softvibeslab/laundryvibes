@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
-import { RiTShirt2Line } from "react-icons/ri";
 import axios from "axios";
 import { apiMessageEs } from "../../utils/localization";
+import BrandLogo from "../Brand/BrandLogo";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -44,9 +44,13 @@ const Login = () => {
         setTimeout(() => {
           navigate("/user/userdashboard");
         }, 2000);
-      } else if (response.status === 200 && ["worker", "admin"].includes(response.data.role)) {
+      } else if (response.status === 200 && response.data.role === "worker") {
         setTimeout(() => {
           navigate("/workerdashboard");
+        }, 2000);
+      } else if (response.status === 200 && response.data.role === "admin") {
+        setTimeout(() => {
+          navigate("/admin/dashboard");
         }, 2000);
       }
     } catch (error) {
@@ -65,12 +69,9 @@ const Login = () => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-sm border border-gray-100">
-        {/* Logo */}
-        <div className="flex justify-center mb-6">
-          <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
-            <RiTShirt2Line className="w-8 h-8 text-blue-600" />
-          </div>
-        </div>
+        <Link to="/" className="flex justify-center mb-6" aria-label="LaundryVibes, volver al inicio">
+          <BrandLogo size={48} />
+        </Link>
 
         {/* Header */}
         <h2 className="text-2xl font-semibold text-center text-gray-800 mb-2">

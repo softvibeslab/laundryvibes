@@ -1,21 +1,105 @@
 <!doctype html>
-<html lang="es">
+<html lang="es-MX">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/jpeg" href="/src/assets/favicon-logo.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#10213f" />
-    <meta name="description" content="LaundryVibes centraliza pedidos, clientes, operación e inventario para mantener tu lavandería organizada de principio a fin." />
-    <meta property="og:type" content="website" />
-    <meta property="og:locale" content="es_MX" />
-    <meta property="og:title" content="LaundryVibes | Pedidos, operación e inventario" />
-    <meta property="og:description" content="Pedidos, perfiles, operación en tiempo real e inventario en un solo flujo." />
-    <meta property="og:url" content="https://laundryvibes.rovicrm.com/" />
+    <meta name="color-scheme" content="light" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <title>LaundryVibes | Software para pedidos e inventario de lavanderías</title>
+    <meta name="description" content="LaundryVibes centraliza pedidos, clientes, operación e inventario para organizar una lavandería de principio a fin." />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="author" content="LaundryVibes" />
+    <meta name="application-name" content="LaundryVibes" />
+    <meta name="keywords" content="software para lavanderías, gestión de lavandería, pedidos de lavandería, inventario de lavandería, sistema de lavandería" />
     <link rel="canonical" href="https://laundryvibes.rovicrm.com/" />
-    <title>LaundryVibes | Pedidos, operación e inventario</title>
+
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/brand/laundryvibes-symbol.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="LaundryVibes" />
+    <meta property="og:locale" content="es_MX" />
+    <meta property="og:title" content="LaundryVibes | Software para pedidos e inventario de lavanderías" />
+    <meta property="og:description" content="Pedidos, clientes, operación e inventario en un solo flujo para tu lavandería." />
+    <meta property="og:url" content="https://laundryvibes.rovicrm.com/" />
+    <meta property="og:image" content="https://laundryvibes.rovicrm.com/brand/laundryvibes-og.png" />
+    <meta property="og:image:secure_url" content="https://laundryvibes.rovicrm.com/brand/laundryvibes-og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="LaundryVibes: tu lavandería organizada de principio a fin" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="LaundryVibes | Software para pedidos e inventario de lavanderías" />
+    <meta name="twitter:description" content="Pedidos, clientes, operación e inventario en un solo flujo para tu lavandería." />
+    <meta name="twitter:image" content="https://laundryvibes.rovicrm.com/brand/laundryvibes-og.png" />
+    <meta name="twitter:image:alt" content="LaundryVibes: tu lavandería organizada de principio a fin" />
+
+    <script id="laundryvibes-structured-data" type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://laundryvibes.rovicrm.com/#organization",
+            "name": "LaundryVibes",
+            "url": "https://laundryvibes.rovicrm.com/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://laundryvibes.rovicrm.com/brand/icon-512.png",
+              "width": 512,
+              "height": 512
+            },
+            "sameAs": ["https://github.com/softvibeslab/laundryvibes"]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://laundryvibes.rovicrm.com/#website",
+            "url": "https://laundryvibes.rovicrm.com/",
+            "name": "LaundryVibes",
+            "description": "Plataforma web para administrar pedidos, clientes, personal operativo e inventario de lavanderías.",
+            "inLanguage": "es-MX",
+            "publisher": { "@id": "https://laundryvibes.rovicrm.com/#organization" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://laundryvibes.rovicrm.com/#software",
+            "name": "LaundryVibes",
+            "url": "https://laundryvibes.rovicrm.com/",
+            "applicationCategory": "BusinessApplication",
+            "applicationSubCategory": "Software de gestión de lavanderías",
+            "operatingSystem": "Web",
+            "inLanguage": "es-MX",
+            "description": "LaundryVibes conecta pedidos de clientes, operación del personal, inventario y seguimiento en tiempo real en una plataforma web.",
+            "image": "https://laundryvibes.rovicrm.com/brand/laundryvibes-og.png",
+            "featureList": [
+              "Registro e inicio de sesión por roles",
+              "Creación e historial de pedidos",
+              "Panel operativo para trabajadores y administradores",
+              "Actualizaciones de pedidos en tiempo real",
+              "Control de inventario, consumo, reposición y alertas",
+              "Registro de reclamaciones",
+              "Notificaciones SMS y recuperación por correo opcionales"
+            ],
+            "audience": {
+              "@type": "BusinessAudience",
+              "audienceType": "Dueños, gerentes y equipos operativos de lavanderías"
+            },
+            "publisher": { "@id": "https://laundryvibes.rovicrm.com/#organization" }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>Necesitas activar JavaScript para utilizar LaundryVibes.</noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

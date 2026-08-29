@@ -1,4 +1,4 @@
-import React, { useEffect, useState,useContext } from 'react';
+import { useEffect, useState } from 'react';
 import Navbar from '../Navbar/Navbar';
 import LoaderM from '../../../assets/loader/loader';
 import { Link } from 'react-router-dom';
@@ -42,6 +42,9 @@ const getMostRecentOrderByStatus  = (orders,status) => {
 };
 
 function WorkerDashbaord() {
+
+  const role = localStorage.getItem('role') === 'admin' ? 'admin' : 'worker';
+  const settingsPath = role === 'admin' ? '/admin/settings' : '/worker/settings';
 
   const[orders,setOrders]=useState([]);
   const[totalOrders,setTotalOrders]=useState(0);
@@ -135,7 +138,7 @@ function WorkerDashbaord() {
         <main className="p-6 max-w-7xl mx-auto">
           {/* Enviar informe Button */}
           <div className="flex justify-end mb-4">
-            <button className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-2 sm:px-4 sm:py-2 rounded-md flex items-center justify-center text-sm sm:text-base w-32 sm:w-auto">
+            <button onClick={() => setGenerateReportOpen(true)} className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-2 sm:px-4 sm:py-2 rounded-md flex items-center justify-center text-sm sm:text-base w-32 sm:w-auto">
               <Send className="h-4 w-4 mr-2" />
               <span className="ml-1">Enviar informe</span>
             </button>
@@ -147,7 +150,12 @@ function WorkerDashbaord() {
           {/* Greeting Card */}
           <div className="bg-blue-50 rounded-lg p-6 mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center">
             <div className="flex-1 sm:mb-0">
-              <h1 className="text-2xl font-bold text-gray-800">Buenas tardes</h1>
+              <h1 className="text-2xl font-bold text-gray-800">
+                {role === 'admin' ? 'Panel de administración' : 'Panel operativo'}
+              </h1>
+              <p className="mt-1 text-sm font-medium text-blue-700">
+                {role === 'admin' ? 'Supervisión de la operación y gestión de accesos' : 'Gestión diaria de pedidos e inventario'}
+              </p>
               <p className="text-gray-600 flex items-center mt-1">
                 <ClipboardList className="h-4 w-4 mr-2" />
                 {new Date().toLocaleDateString("es-MX", {
@@ -225,14 +233,14 @@ function WorkerDashbaord() {
               <FileText className="h-6 w-6 mb-2" />
               <span>Generar informe</span>
             </button>
-            <button className="bg-purple-500 hover:bg-purple-600 text-white p-4 rounded-lg flex flex-col items-center justify-center">
+            <Link to="/stock" className="bg-purple-500 hover:bg-purple-600 text-white p-4 rounded-lg flex flex-col items-center justify-center">
               <RefreshCw className="h-6 w-6 mb-2" />
-              <span>Sincronizar inventario</span>
-            </button>
-            <button className="bg-gray-500 hover:bg-gray-600 text-white p-4 rounded-lg flex flex-col items-center justify-center">
+              <span>Revisar inventario</span>
+            </Link>
+            <Link to={settingsPath} className="bg-gray-500 hover:bg-gray-600 text-white p-4 rounded-lg flex flex-col items-center justify-center">
               <Settings className="h-6 w-6 mb-2" />
-              <span>Configuración</span>
-            </button>
+              <span>{role === 'admin' ? 'Administración' : 'Configuración'}</span>
+            </Link>
           </div>
 
           <NewOrder
