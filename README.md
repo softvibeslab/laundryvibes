@@ -36,11 +36,12 @@ Health endpoints: `/api/health/live` (process) and `/api/health/ready` (Mongo re
 
 ## Production
 
-`compose.production.yml` uses project/container/network/volume names prefixed `laundryvibes`, a private unexposed Mongo service, non-root/read-only application containers, health checks and resource/PID limits. Backend binds only to `127.0.0.1:5050`; frontend binds to `127.0.0.1:5080`. It does not modify or install host Nginx.
+The recommended VPS manifest is `compose.production.atlas.yml`: it runs only the application containers and connects to a dedicated MongoDB Atlas database. This avoids adding a Mongo process to the resource-constrained shared VPS. The optional `compose.production.yml` keeps an isolated local-Mongo topology for hosts with sufficient memory. Both use names prefixed `laundryvibes`, non-root/read-only application containers, health checks and resource/PID limits. Backend binds only to `127.0.0.1:5050`; frontend binds only to `127.0.0.1:5080`.
 
-1. Copy `deploy/production.env.example` to the Git-ignored `secrets/production.env` and replace every placeholder.
-2. Validate with `docker compose --env-file secrets/production.env -f compose.production.yml config --quiet`.
-3. Follow `docs/production-runbook.md` for release, backup, restore and rollback.
-4. Review the separate example `deploy/nginx/laundryvibes.example.conf`; deployment remains a manual, host-specific operation.
+1. Copy `deploy/production.atlas.env.example` to the Git-ignored `secrets/production.env` and replace every placeholder.
+2. In Atlas, create a least-privilege `laundryvibes` database user and allow only VPS address `31.220.63.211/32`.
+3. Validate with `docker compose --env-file secrets/production.env -f compose.production.atlas.yml config --quiet`.
+4. Follow `docs/production-runbook.md` for release, backup, restore and rollback.
+5. After DNS is correct, review `deploy/nginx/laundryvibes.rovicrm.com.conf`, install it manually, and provision TLS with Certbot.
 
 No real secret belongs in this repository. Docker execution/deployment is intentionally not part of repository preparation.

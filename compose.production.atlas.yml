@@ -1,0 +1,55 @@
+name: laundryvibes
+
+services:
+  backend:
+    build:
+      context: ./BACKEND
+    image: laundryvibes-backend:local
+    container_name: laundryvibes-backend
+    restart: unless-stopped
+    env_file: ./secrets/production.env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+    ports:
+      - "127.0.0.1:5050:3000"
+    networks: [laundryvibes_egress]
+    read_only: true
+    tmpfs: [/tmp]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: 384m
+    cpus: 0.75
+    pids_limit: 100
+    security_opt: [no-new-privileges:true]
+
+  frontend:
+    build:
+      context: ./Frontend
+    image: laundryvibes-frontend:local
+    container_name: laundryvibes-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5080:8080"
+    read_only: true
+    tmpfs: [/var/cache/nginx, /var/run]
+    networks: [laundryvibes_egress]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    mem_limit: 128m
+    cpus: 0.25
+    pids_limit: 50
+    security_opt: [no-new-privileges:true]
+
+networks:
+  laundryvibes_egress:
+    name: laundryvibes_egress
