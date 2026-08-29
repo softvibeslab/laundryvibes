@@ -30,7 +30,7 @@ const handleSubmit = async (e) =>{
   }
 
   try{
-    const response = await axios.post('https://laundry-buddy-yysq.onrender.com/user/signup',
+    const response = await axios.post('/api/user/signup',
       {name,
       email,
       phoneNumber:number,

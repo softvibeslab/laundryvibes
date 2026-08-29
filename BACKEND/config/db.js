@@ -1,21 +1,9 @@
 const mongoose = require('mongoose');
-const dotenv =require('dotenv');
 
-// load env config
-dotenv.config();
+async function connectDB(mongoUrl) {
+  await mongoose.connect(mongoUrl, { serverSelectionTimeoutMS: 10000 });
+  console.info('MongoDB connected');
+  return mongoose.connection;
+}
 
-
-
-const connectDB = async () => {
-    try {
-      const conn = await mongoose.connect(process.env.MONGODB_URL, {
-        useNewUrlParser: true,
-      });
-      console.log(`MongoDB Connected: {conn.connection.host}`);
-    } catch (error) {
-      console.error(error.message);
-      process.exit(1);
-    }
-  }
-
-  module.exports = connectDB;
+module.exports = connectDB;

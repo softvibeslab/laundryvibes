@@ -23,7 +23,7 @@ if(newPassword!== confirmPassword){
 }
 try{
 
-  const response = await axios.post(`https://laundry-buddy-yysq.onrender.com/user/reset-password/${token}`,
+  const response = await axios.post(`/api/user/reset-password/${token}`,
     {newPassword,confirmPassword},
     { headers: { "Content-Type": "application/json" } }
   );

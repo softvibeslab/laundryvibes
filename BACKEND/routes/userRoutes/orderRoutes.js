@@ -5,7 +5,7 @@ const {submitOrder,getOrderSummary} = require('../../controllers/user/OrderManag
 const authMiddleware = require('../../middleware/authMiddleware');
 
 
-router.post('/submit-order',authenticateUser,submitOrder);
-router.get('/order-history',authMiddleware ,getOrderSummary);
+router.post('/submit-order',authenticateUser, require('../../middleware/authMiddleware').requireRoles('user'), submitOrder);
+router.get('/order-history',authMiddleware, require('../../middleware/authMiddleware').requireRoles('user'), getOrderSummary);
 
 module.exports = router

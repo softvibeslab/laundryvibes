@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { authenticateUser, requireRoles } = require('../../middleware/authMiddleware');
 const {
   getAllStock,
   getStockById,
@@ -12,6 +13,8 @@ const {
   getAllAlerts,
   deleteStockItem,
 } = require('../../controllers/worker/stockController');
+
+router.use(authenticateUser, requireRoles('worker', 'admin'));
 
 router.get('/all', getAllStock);
 

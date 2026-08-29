@@ -1,27 +1,36 @@
 const Order = require("../../../models/userOrder");
 const mongoose = require('mongoose')
 
-const submitOrder = async (req, res) => {
+const orderDto = (order) => ({
+  id: String(order._id),
+  numberOfClothes: order.numberOfClothes,
+  weight: order.weight,
+  status: order.status,
+  createdAt: order.createdAt,
+});
+
+const submitOrder = async (req, res, next) => {
 
 
  
   
 
-    const { numberOfClothes, weight } = req.body;
+    const numberOfClothes = Number(req.body.numberOfClothes);
+    const weight = Number(req.body.weight);
     const userId = req.user.userId;
 
-    if(!numberOfClothes){
-      return res.status(400).json({message:"Number of Clothes Are Required"})
+    if(!Number.isInteger(numberOfClothes) || numberOfClothes < 1){
+      return res.status(400).json({message:"Number of clothes must be a positive integer"})
     }
-    if(!weight){
-      return res.status(400).json({message:"Plz enter the weight"})
+    if(!Number.isFinite(weight) || weight <= 0){
+      return res.status(400).json({message:"Weight must be greater than zero"})
     }
 
     try {
     const newOrder = new Order({
       userId,
-      numberOfClothes: parseInt(numberOfClothes),
-      weight: parseInt(weight),
+      numberOfClothes,
+      weight,
      
 
     });
@@ -29,12 +38,10 @@ const submitOrder = async (req, res) => {
 
 
     await newOrder.save();
-    console.log("Order Saved Successfully");
-
-    res.status(201).json({ message: "Order submitted successfully", order: newOrder });
+    req.app.locals.io?.to('workers').emit('orders:refresh');
+    return res.status(201).json({ message: "Order submitted successfully", order: orderDto(newOrder) });
   } catch (error) {
-    console.error("Error in submitOrder:", error.message);
-    res.status(500).json({ message: "Failed to submit order", error: error.message });
+    return next(error);
   }
 };
 
@@ -43,7 +50,7 @@ const submitOrder = async (req, res) => {
 
 // Get all orderes with number of  orders
 
-const getOrderSummary = async (req, res) => {
+const getOrderSummary = async (req, res, next) => {
   try {
 
 
@@ -94,13 +101,7 @@ res.status(200).json({
 })
 
 
-  } catch (error) {
-    // Respond with error if the fetch fails
-    res.status(500).json({
-      message: 'Failed to fetch orders',
-      error: error.message,  // Send the error message to the client
-    });
-  }
+  } catch (error) { return next(error); }
 };
 
 

@@ -65,7 +65,7 @@ const Dashboard = () => {
       setError(false);
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("https://laundry-buddy-yysq.onrender.com/user/profile", {
+        const response = await axios.get("/api/user/profile", {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = response.data;
@@ -87,7 +87,7 @@ const Dashboard = () => {
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("https://laundry-buddy-yysq.onrender.com/user/order-history", {
+        const response = await axios.get("/api/user/order-history", {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = response.data;

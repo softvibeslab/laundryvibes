@@ -1,4 +1,4 @@
-import React, {useEffect, useState,useContext } from "react";
+import {useEffect, useState,useContext } from "react";
 import axios from 'axios'
 import { OrderContext } from "./OrderContext";
 import {
@@ -18,18 +18,12 @@ import Sidebar from "../Sidebar";
 import LoaderM from "../../../assets/loader/loader";
 import { useNavigate } from "react-router-dom";
 
-import { io } from 'socket.io-client';
-
-
 export default function SubmitOrder() {
   const [step, setStep] = useState(1);
   const [showpayment, setShowPayment] = useState(false);
   const [screenshot, setScreenshot] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-
-  const [socket, setSocket] = useState(null);
-
 
 
   const handleFileChange = (event) => {
@@ -55,7 +49,7 @@ export default function SubmitOrder() {
         const token = localStorage.getItem("token");
         // console.log("token",token);
 
-        const response = await axios.get("https://laundry-buddy-yysq.onrender.com/user/profile", {
+        const response = await axios.get("/api/user/profile", {
           headers: { Authorization: `Bearer ${token}` }
         })
 
@@ -99,24 +93,17 @@ export default function SubmitOrder() {
         weight: parseInt(weight),
       };
 
-      const response = await axios.post("https://laundry-buddy-yysq.onrender.com/user/submit-order", orderData, {
+      await axios.post("/api/user/submit-order", orderData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("Order Submitted:", response.data)
-
-      if (socket) {
-        socket.emit('student-message', token); // Use `socket` from state here
-      }
+      naviagte("/user/submit-order/success");
 
     } catch (error) {
-      setError("Error fetching user details", error.response?.data?.message || error.message)
+      setError(error.response?.data?.message || "Unable to submit order")
     }
     finally {
       setLoading(false);
     }
-
-      naviagte("/user/submit-order/success");
-  
 
   };
 
@@ -140,24 +127,6 @@ export default function SubmitOrder() {
   }
 
 
-
-  // Handling socket.io connection 
-  useEffect(() => {
-    const socketConnection = io('https://laundry-buddy-yysq.onrender.com'); // Create the socket inside useEffect
-    setSocket(socketConnection);
-
-    socketConnection.on('connect', () => {
-      console.log('Connected to server');
-    });
-
-    socketConnection.on('disconnect', () => {
-      console.log('Disconnected from server');
-    });
-
-    return () => {
-      socketConnection.disconnect();
-    };
-  }, []);
 
 
   return (
@@ -270,6 +239,7 @@ export default function SubmitOrder() {
         type="number"
         placeholder="Bag Number"
         value={user.bagNumber}
+        readOnly
         className="w-full bg-transparent outline-none"
       />
     </div>
@@ -282,6 +252,7 @@ export default function SubmitOrder() {
         type="text"
         placeholder="Name"
         value={user.name}
+        readOnly
         className="w-full bg-transparent outline-none"
       />
     </div>
@@ -307,6 +278,7 @@ export default function SubmitOrder() {
         type="text"
         placeholder="Building"
         value={user.buildingName}
+        readOnly
         className="w-full bg-transparent outline-none"
       />
     </div>

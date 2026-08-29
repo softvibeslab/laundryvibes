@@ -12,7 +12,7 @@ const handleForgotPassword = async(e)=>{
 
   try{
 
-    const response =await axios.post("https://laundry-buddy-yysq.onrender.com/user/forgot-password",{email},
+    const response =await axios.post("/api/user/forgot-password",{email},
         { headers: { "Content-Type": "application/json" } }
     );
     toast.info(response.data.message||"Email Send Successfully")

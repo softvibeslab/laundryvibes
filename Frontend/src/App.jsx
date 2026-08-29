@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link, BrowserRouter } from 'react-router-dom';
+import { Routes, Route, BrowserRouter } from 'react-router-dom';
 import './App.css'
 import RoleSelector from './Component/Roleselector/Roleselector.jsx'
 import Dashboard from './Component/User/Dashboard.jsx';
@@ -16,10 +16,12 @@ import Complaint from './Component/User/Complaint-Form/ComplaintForm.jsx';
 import ComplaintFormSuccess from './Component/User/Complaint-Form/ComplaintFormSuccess.jsx';
 import OrderManagement from './Component/Worker/OrdersManagement/OrderManagement.jsx';
 import Stock from './Component/Worker/Stock/Stock.jsx';
+import ProtectedRoute from './Component/ProtectedRoute.jsx';
 
 
 function App() {
-
+  const user = (content) => <ProtectedRoute roles={['user']}>{content}</ProtectedRoute>;
+  const worker = (content) => <ProtectedRoute roles={['worker', 'admin']}>{content}</ProtectedRoute>;
 
   return (
     <>
@@ -30,20 +32,20 @@ function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password/:token" element={<ResetPassword />} />
     <Route index element={<div className='bg-softBlue min-h-screen'><RoleSelector /></div>} />
-    <Route path="/user/userdashboard" element={<div className="bg-softBlue min-h-screen"> <Dashboard /></div>}  />    
-    <Route path="/user/order-history" element={<div className="bg-historybg min-h-screen "> <Orderhistory /></div>}  />    
-    <Route path="/user/submit-order" element={<div className="bg-historybg min-h-screen "> <Submitorder /></div>}  />    
-    <Route path="/user/submit-order/success" element={<div className=" bg-gray-50 min-h-screen "> <OrderConfirmation /></div>}  />    
-    <Route path="/user/daily-rush" element={<div className=" bg-gray-50 min-h-screen "> <Dailyrush /></div>}  />    
-    <Route path="/user/profile" element={<div className="bg-softBlue min-h-screen "> <Profile /></div>}  />    
-    <Route path="/user/complaint" element={<div className="bg-softBlue min-h-screen "> <Complaint /></div>}  />    
-    <Route path="/user/complaint/success" element={<div className="bg-softBlue min-h-screen "> <ComplaintFormSuccess /></div>}  />   
+    <Route path="/user/userdashboard" element={user(<div className="bg-softBlue min-h-screen"><Dashboard /></div>)} />
+    <Route path="/user/order-history" element={user(<div className="bg-historybg min-h-screen"><Orderhistory /></div>)} />
+    <Route path="/user/submit-order" element={user(<div className="bg-historybg min-h-screen"><Submitorder /></div>)} />
+    <Route path="/user/submit-order/success" element={user(<div className="bg-gray-50 min-h-screen"><OrderConfirmation /></div>)} />
+    <Route path="/user/daily-rush" element={user(<div className="bg-gray-50 min-h-screen"><Dailyrush /></div>)} />
+    <Route path="/user/profile" element={user(<div className="bg-softBlue min-h-screen"><Profile /></div>)} />
+    <Route path="/user/complaint" element={user(<div className="bg-softBlue min-h-screen"><Complaint /></div>)} />
+    <Route path="/user/complaint/success" element={user(<div className="bg-softBlue min-h-screen"><ComplaintFormSuccess /></div>)} />
 
 
     {/* worker starts  */}
-    <Route path="/workerdashboard" element={ <WorkerDashbaord /> } />  
-    <Route path="/worker/orders" element={ <OrderManagement /> } />
-    <Route path="/stock" element={ <Stock /> } />  
+    <Route path="/workerdashboard" element={worker(<WorkerDashbaord />)} />
+    <Route path="/worker/orders" element={worker(<OrderManagement />)} />
+    <Route path="/stock" element={worker(<Stock />)} />
     </Routes>
     </BrowserRouter>
     </>

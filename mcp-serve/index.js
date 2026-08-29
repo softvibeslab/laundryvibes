@@ -8,9 +8,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import axios from "axios";
-// import express from "express";
-const BASE_URL = "https://laundry-buddy-yysq.onrender.com";
-const PORT = 5000;
+import { BASE_URL } from "./config.js";
 
 class LaundryBuddyMCPServer {
   constructor() {

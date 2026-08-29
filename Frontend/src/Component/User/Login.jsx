@@ -20,7 +20,7 @@ const Login = () => {
     setLoading(true)
 
     try {
-      const response = await axios.post("https://laundry-buddy-yysq.onrender.com/user/login", {
+      const response = await axios.post("/api/user/login", {
         email,
         password,
       });

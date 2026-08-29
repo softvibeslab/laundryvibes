@@ -64,7 +64,7 @@ function WorkerDashbaord() {
   const fetchDetails = async () => {
     setLoading(true);
     try{
-      const response = await axios.get("https://laundry-buddy-yysq.onrender.com/worker/getallorderdetails");
+      const response = await axios.get("/api/worker/getallorderdetails");
       
       // Set all orders data
       setOrders(response.data.orders || []);

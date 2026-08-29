@@ -16,7 +16,7 @@ function Complaint() {
     
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("https://laundry-buddy-yysq.onrender.com/user/profile", {
+        const response = await axios.get("/api/user/profile", {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = response.data;
@@ -50,31 +50,20 @@ function Complaint() {
     setFormData({ ...formData, complaintType: type });
   };
 
-  // Handle form submission with Web3Forms
+  // Submit through our authenticated backend; no third-party key is shipped to browsers.
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (event) => {
     event.preventDefault();
     setLoading(true); // Start loading
   
-    const formDataObject = new FormData(event.target);
-    formDataObject.append("access_key", "453861ed-f216-4c30-9bea-8139da5c891d");
-    formDataObject.append("from_name", "Laundry Service Complaint Form");
-  
-    const object = Object.fromEntries(formDataObject);
-    const json = JSON.stringify(object);
-  
     try {
-      const res = await fetch("https://api.web3forms.com/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: json,
-      }).then((res) => res.json());
-  
-      if (res.success) {
+      const res = await axios.post('/api/user/submit-complaint', {
+        bagNumber,
+        typeOfComplaint: formData.complaintType,
+        description: formData.description,
+      });
+      if (res.status === 201) {
         navigate("/user/complaint/success");
       } else {
         alert("Error submitting complaint. Please try again.");
@@ -98,7 +87,7 @@ function Complaint() {
       <div className="flex-1 bg-gray-50 p-6">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Submit Complaint</h1>
         <form onSubmit={onSubmit} className="bg-white p-5 rounded-lg mt-3 shadow mb-6 w-full">
-          <input type="hidden" name="access_key" value="YOUR_ACCESS_KEY_HERE" />
+
           
           {/* Order Number and Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1,6 +1,12 @@
 const User = require('../../../models/user');
 
-const getUserProfile = async (req,res) => {
+const profileDto = (user) => ({
+    id: String(user._id), name: user.name, email: user.email,
+    phoneNumber: user.phoneNumber, buildingName: user.buildingName,
+    roomNumber: user.roomNumber, bagNumber: user.bagNumber, address: user.address,
+});
+
+const getUserProfile = async (req,res,next) => {
     try {
         const user = await User.findById(req.user.userId)
 
@@ -8,14 +14,12 @@ const getUserProfile = async (req,res) => {
            return res.status(404).json({message:"User not found"});
         }
 
-        res.json(user);
+        res.json(profileDto(user));
 
-    } catch(error){
-        res.status(500).json({message:"Server Error"});
-    }
+    } catch(error){ return next(error); }
 };
 
-const updateUserProfile = async (req,res) => {
+const updateUserProfile = async (req,res,next) => {
     try{
         const userId=req.user.userId
         const {phoneNumber,roomNumber,bagNumber,buildingName,address} = req.body;
@@ -53,12 +57,9 @@ const updateUserProfile = async (req,res) => {
 
     //   console.log("updates user:",updateUser)
 
-        res.status(200).json({message:"Profile Update Successfully",user : updateUser})
+        res.status(200).json({message:"Profile Update Successfully",user : profileDto(updateUser)})
 
-    }catch(error){
-        console.error("update profile error:",error)
-        res.status(500).json({message:"Internal server error ",error:error.message});
-    }
+    }catch(error){ return next(error); }
 }
 
 module.exports = {getUserProfile,updateUserProfile}

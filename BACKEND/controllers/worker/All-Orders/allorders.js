@@ -1,103 +1,56 @@
-const mongoose = require("mongoose");
-const Order = require("../../../models/userOrder");
-const User = require("../../../models/user");
-const twilio =require('twilio');
+const Order = require('../../../models/userOrder');
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const client = new twilio(accountSid, authToken);
-
-const getWorkerOrders = async (req, res) => {
-    try {
-      const orders = await Order.find().populate('userId').sort({ createdAt: -1 });
-  
-      if (!orders || orders.length === 0) {
-        return res.status(404).json({ message: "No orders found" });
-      }
-  
-      const totalOrders = orders.length;
-      const pendingOrders = orders.filter(order => order.status === "Pending").length;
-      const completedOrders = orders.filter(order => order.status === "Completed").length;
-  
-      const formattedOrders = orders.map(order => {
-        // Check if userId is populated and not null
-        const user = order.userId || {};
-        return {
-          OrderId: order._id,
-          userName: user.name || 'N/A', 
-          phoneNumber: user.phoneNumber,
-          bagNumber: user.bagNumber,
-          numberOfItems: order.numberOfClothes,
-          status: order.status,
-          date: new Date(order.createdAt).toLocaleDateString('en-US', {
-            timeZone: 'Asia/Kolkata',
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-          }),
-          time: new Date(order.createdAt).toLocaleTimeString('en-US', {
-            timeZone: 'Asia/Kolkata',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-          })
-        };
-      });
-  
-      res.status(200).json({
-        totalOrders,
-        pendingOrders,
-        completedOrders,
-        orders: formattedOrders
-      });
-    } catch (error) {
-      res.status(500).json({
-        message: 'Failed to fetch orders',
-        error: error.message,
-      });
-    }
+function orderDto(order) {
+  const user = order.userId || {};
+  return {
+    OrderId: order._id, userName: user.name || 'N/A', phoneNumber: user.phoneNumber,
+    bagNumber: user.bagNumber, numberOfItems: order.numberOfClothes, status: order.status,
+    date: new Date(order.createdAt).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' }),
+    time: new Date(order.createdAt).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }),
   };
+}
 
+async function getWorkerOrders(req, res, next) {
+  try {
+    const orders = await Order.find().populate('userId', 'name phoneNumber bagNumber').sort({ createdAt: -1 });
+    return res.json({
+      totalOrders: orders.length,
+      pendingOrders: orders.filter((o) => o.status === 'Pending').length,
+      completedOrders: orders.filter((o) => o.status === 'Completed').length,
+      orders: orders.map(orderDto),
+    });
+  } catch (error) { return next(error); }
+}
 
+async function updateOrderStatus(req, res, next) {
+  try {
+    const order = await Order.findById(req.params.orderId).populate('userId', 'phoneNumber name');
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    const alreadyCompleted = order.status === 'Completed';
+    order.status = 'Completed';
+    await order.save();
+    req.app.locals.io?.to('workers').emit('orders:refresh');
+    if (order.userId?._id) req.app.locals.io?.to(`user:${order.userId._id}`).emit('orders:refresh');
 
-
-
-   const updateOrderStatus = async (req, res) => {
-    const { orderId } = req.params;
-    const { phoneNumber, message } = req.body;
-
-
-  
-    try {
-      const order = await Order.findById(orderId);
-  
-      if (!order) {
-        return res.status(404).json({ message: 'Order not found' });
+    let notification = order.smsSent ? 'already-sent' : 'not-configured';
+    if (!alreadyCompleted && !order.smsSent && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER && order.userId?.phoneNumber) {
+      try {
+        const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        await client.messages.create({
+          body: `LaundryVibes: your order ${order._id} is complete and ready.`,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: order.userId.phoneNumber,
+        });
+        order.smsSent = true;
+        await order.save();
+        notification = 'sent';
+      } catch (error) {
+        notification = 'failed';
+        console.error('Best-effort SMS failed', { orderId: String(order._id), name: error.name });
       }
-  
-      order.status = 'Completed';
-      order.smsSent = true;
-      await order.save();
-
-      await client.messages.create({
-        body: message,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: phoneNumber,
-      });
-  
-      res.status(200).json({ message: 'Order status updated to Completed and Notification Send', order });
-    } catch (error) {
-      console.error('Error updating order status and sending notification:', error);
-  
-      // Provide more specific error details in the response
-      res.status(500).json({
-        message: 'An error occurred while updating the order status or sending SMS',
-        error: error.message || 'Unknown error',
-      });
     }
-  };
-  
+    return res.json({ message: 'Order status updated', order: { id: order._id, status: order.status }, notification });
+  } catch (error) { return next(error); }
+}
 
-
-  module.exports = {getWorkerOrders,updateOrderStatus}
-  
+module.exports = { getWorkerOrders, updateOrderStatus };

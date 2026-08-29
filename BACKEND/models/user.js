@@ -1,5 +1,5 @@
 const { Schema, model } = require('mongoose');
-const { type } = require('os');
+
 
 const userSchema = new Schema(
   {
@@ -34,6 +34,7 @@ const userSchema = new Schema(
       type: String,
       required: true,
       minlength: 6, // Minimum password length
+      select: false,
     },
     role: {
       type: String,
@@ -46,16 +47,17 @@ const userSchema = new Schema(
     },
     resetPasswordToken: {
       type: String,
+      select: false,
     },
     resetPasswordExpires: {
       type:Date,
+      select: false,
     },
   },
   {
-    timestamps: true, // Automatically adds createdAt and updatedAt
-  },
-  {
-    collection: 'users', // Ensure it uses the 'users' collection in the DB
+    timestamps: true,
+    collection: 'users',
+    toJSON: { transform(doc, ret) { delete ret.password; delete ret.resetPasswordToken; delete ret.resetPasswordExpires; return ret; } },
   }
 );
 

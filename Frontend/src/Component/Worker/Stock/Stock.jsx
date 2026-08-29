@@ -47,9 +47,9 @@ const Stock = () => {
     setLoading(true);
     try {
       const [stockRes, analyticsRes, alertsRes] = await Promise.all([
-        axios.get('http://localhost:3000/stock/all'),
-        axios.get('http://localhost:3000/stock/analytics'),
-        axios.get('http://localhost:3000/stock/alerts'),
+        axios.get('/api/stock/all'),
+        axios.get('/api/stock/analytics'),
+        axios.get('/api/stock/alerts'),
       ]);
 
       setStockItems(stockRes.data.data || []);
@@ -95,7 +95,7 @@ const Stock = () => {
 
     try {
       const response = await axios.post(
-        `http://localhost:3000/stock/${selectedStock._id}/consume`,
+        `/api/stock/${selectedStock._id}/consume`,
         {
           quantityUsed: quantity,
           reason: consumptionForm.reason,
@@ -154,7 +154,7 @@ const Stock = () => {
 
     try {
       const response = await axios.post(
-        `http://localhost:3000/stock/${selectedStock._id}/add`,
+        `/api/stock/${selectedStock._id}/add`,
         {
           quantityToAdd: quantity,
           notes: restockForm.notes,

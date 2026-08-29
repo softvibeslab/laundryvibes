@@ -1,5 +1,5 @@
 // NotifyAndComplete.jsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { CheckCircle } from "lucide-react";
 import axios from 'axios'
 
@@ -16,13 +16,8 @@ function NotifyAndComplete({ isOpen, onClose, order, fetchOrders }) {
 
     try {
 
-      const phoneNumber = `+91${order?.phoneNumber}`;
-      const message = `Order #${order?.bagNumber || "N/A"} has been completed and ready for pickup.`;
-
-    
-
-      const response = await axios.patch(`https://laundry-buddy-yysq.onrender.com/worker/update-order-status/${order?.OrderId}`,
-        {phoneNumber,message},
+      await axios.patch(`/api/worker/update-order-status/${order?.OrderId}`,
+        {},
          {
           headers: {
             'Content-Type': 'application/json', // Set the Content-Type header
@@ -88,15 +83,9 @@ function NotifyAndComplete({ isOpen, onClose, order, fetchOrders }) {
             />
           </div>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notification Message</label>
-            <textarea
-              defaultValue={`Order #${order?.bagNumber || "N/A"} has been completed and ready for pickup.`}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              rows="3"
-              placeholder="Enter notification message"
-            />
-          </div>
+          <p className="mb-4 text-sm text-gray-600">
+            The server will send the configured completion notification to the customer.
+          </p>
 
           <button
             type="submit"

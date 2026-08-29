@@ -23,7 +23,7 @@ export default function Profile() {
       setLoader(true);
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("https://laundry-buddy-yysq.onrender.com/user/profile", {
+        const response = await axios.get("/api/user/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -56,7 +56,7 @@ const[error,setError] = useState('');
     try {
       const token = localStorage.getItem("token");
       const response = await axios.patch(
-        "https://laundry-buddy-yysq.onrender.com/user/profile",
+        "/api/user/profile",
         {
           phoneNumber,
           roomNumber,
@@ -108,7 +108,7 @@ const[error,setError] = useState('');
 
     try{
       const token = localStorage.getItem("token")
-      const response = await axios.put("https://laundry-buddy-yysq.onrender.com/user/update-password",
+      const response = await axios.put("/api/user/update-password",
         {currentPassword:currentPassword,
           newPassword},
         {headers:{ Authorization : `Bearer ${token}` }}

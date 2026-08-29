@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { CheckCircle, Bell, ArrowUpDown, Check, Download, Search } from 'lucide-react';
+import { CheckCircle, ArrowUpDown, Download, Search } from 'lucide-react';
 import Navbar from '../Navbar/Navbar';
 import LoaderM from '../../../assets/loader/loader';
 import NotifyAndComplete from './NotifyAndComplete';
@@ -10,23 +10,21 @@ import { io } from 'socket.io-client';
 function OrderManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [orders, setOrders] = useState([]);
-  const [pendingOrders, setPendingOrders] = useState([]);
-  const [completedOrders, setCompletedOrders] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [isModelOpen,setIsModelOpen]=useState(false);
   const [selectedOrder,setSelectedOrder]=useState(null)
-  const [socket, setSocket] = useState(null);
+
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get('https://laundry-buddy-yysq.onrender.com/worker/getallorderdetails');
-      const { orders, pendingOrders, completedOrders } = response.data;
+      const response = await axios.get('/api/worker/getallorderdetails');
+      const { orders } = response.data;
 
       console.log("Response",response.data.orders)
 
       setOrders(orders || []);
-      setPendingOrders(orders.filter(order => order.status === "Pending") || []);
-      setCompletedOrders(orders.filter(order => order.status === "Completed") || []);
+
       setLoading(false);
       console.log("Orders",response)
     } catch (error) {
@@ -41,14 +39,14 @@ function OrderManagement() {
 
       // Handling socket.io connection 
       useEffect(() => {
-        const socketConnection = io('https://laundry-buddy-yysq.onrender.com'); // Create the socket inside useEffect
-        setSocket(socketConnection);
+        const socketConnection = io({ auth: { token: localStorage.getItem('token') } });
+
     
         socketConnection.on('connect', () => {
           console.log('Connected to server');
         });
     
-        socketConnection.on('server-message', (message) => {
+        socketConnection.on('orders:refresh', () => {
           fetchOrders()
         });
     

@@ -27,7 +27,6 @@ const getAllStock = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Error retrieving stock items',
-      error: error.message,
     });
   }
 };
@@ -48,7 +47,6 @@ const getStockById = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Error retrieving stock item',
-      error: error.message,
     });
   }
 };
@@ -87,7 +85,6 @@ const createStockItem = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Error creating stock item',
-      error: error.message,
     });
   }
 };
@@ -151,7 +148,6 @@ const addStock = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Error adding stock',
-      error: error.message,
     });
   }
 };
@@ -229,7 +225,6 @@ const recordConsumption = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Error recording consumption',
-      error: error.message,
     });
   }
 };
@@ -260,7 +255,6 @@ const updateStockItem = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Error updating stock item',
-      error: error.message,
     });
   }
 };
@@ -303,7 +297,6 @@ const getStockAnalytics = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Error retrieving stock analytics',
-      error: error.message,
     });
   }
 };
@@ -348,7 +341,6 @@ const getConsumptionHistory = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Error retrieving consumption history',
-      error: error.message,
     });
   }
 };
@@ -385,7 +377,6 @@ const getAllAlerts = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Error retrieving alerts',
-      error: error.message,
     });
   }
 };
@@ -406,7 +397,6 @@ const deleteStockItem = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Error deleting stock item',
-      error: error.message,
     });
   }
 };

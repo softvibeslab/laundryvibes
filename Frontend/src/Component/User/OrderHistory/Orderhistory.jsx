@@ -17,7 +17,7 @@ export default function Orderhistory() {
     const fetchUserHistory = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("https://laundry-buddy-yysq.onrender.com/user/order-history", {
+        const response = await axios.get("/api/user/order-history", {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = response.data;

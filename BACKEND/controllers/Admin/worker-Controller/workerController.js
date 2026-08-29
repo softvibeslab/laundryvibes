@@ -1,7 +1,7 @@
 const Worker = require("../../../models/Worker/workerModel");
 const bcrypt = require("bcryptjs");
 
-const createWorker = async (req, res) => {
+const createWorker = async (req, res, next) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -26,14 +26,8 @@ const createWorker = async (req, res) => {
     });
     await newWorker.save();
 
-    res
-      .status(201)
-      .json({ message: "Worker added successfully", worker: newWorker });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error creating worker", error: error.message });
-  }
+    res.status(201).json({ message: "Worker added successfully", worker: { id: newWorker._id, email: newWorker.email, role: newWorker.role } });
+  } catch (error) { return next(error); }
 };
 
 
