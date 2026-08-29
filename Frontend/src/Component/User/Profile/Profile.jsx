@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import LoaderM from '../../../assets/loader/loader'
+import { apiMessageEs } from '../../../utils/localization';
 
 export default function Profile() {
   const [user, setUser] = useState({});
@@ -72,7 +73,7 @@ const[error,setError] = useState('');
       // Handle success response
       console.log("Profile updated successfully:", response.data);
 
-      toast.success("Profile update successfully!",{
+      toast.success("¡Perfil actualizado correctamente!",{
         autoClose : 3000
       })
 
@@ -87,9 +88,9 @@ const[error,setError] = useState('');
     }   catch (error) {
       // Handle specific error messages from the API
       if (error.response && error.response.data.message) {
-        setError(error.response.data.message); // Set error message from the API
+        setError(apiMessageEs(error.response.data.message));
       } else {
-        setError("An error occurred. Please try again."); // Generic error message
+        setError("Ocurrió un error. Inténtalo de nuevo."); // Generic error message
       }
     }
   };
@@ -114,13 +115,13 @@ const[error,setError] = useState('');
         {headers:{ Authorization : `Bearer ${token}` }}
       );
 
-    toast.success("Password Update Successfully",{
+    toast.success("Contraseña actualizada correctamente",{
       autoClose:3000
     });
     setNewPassword('');
     setCurrentPassword('');
     }catch(error){
-      setPassError(error.response?.data?.message || "Something went Wrong");
+      setPassError(apiMessageEs(error.response?.data?.message, "Algo salió mal"));
     }
   };
 
@@ -140,13 +141,13 @@ const[error,setError] = useState('');
       ):(
         <div className="flex-1 bg-gray-100 p-6">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">
-          Profile Settings
+          Configuración del perfil
         </h1>
 
-        {/* Personal Information */}
+        {/* Información personal */}
         <div className="bg-white p-6 rounded-lg mt-3 shadow mb-6 w-full">
-          <h2 className="text-lg font-semibold">Personal Information</h2>
-          <p className="text-sm text-gray-500 mb-4">Manage your profile details</p>
+          <h2 className="text-lg font-semibold">Información personal</h2>
+          <p className="text-sm text-gray-500 mb-4">Administra los datos de tu perfil</p>
 
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden flex items-center justify-center text-xl font-bold text-gray-600">
@@ -166,13 +167,13 @@ const[error,setError] = useState('');
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
               <div className="flex flex-col">
-                <label className="text-sm font-medium mb-1" htmlFor="phoneNumber">Phone Number</label>
+                <label className="text-sm font-medium mb-1" htmlFor="phoneNumber">Número de teléfono</label>
                 <div className="flex items-center focus-within:border-black focus-within:border-2 border rounded-lg p-3">
                   <Phone className="w-5 h-5 text-gray-400 mr-2" />
                   <input
                     id="phoneNumber"
                     type="tel"
-                    placeholder="Phone Number"
+                    placeholder="Número de teléfono"
                     pattern="^\+91[0-9]{10}$"
                     value={phoneNumber.startsWith("+91") ? phoneNumber : `+91${phoneNumber}`}
                     onChange={(e) => setPhoneNumber(e.target.value.replace("+91", ""))}
@@ -181,13 +182,13 @@ const[error,setError] = useState('');
                 </div>
               </div>
               <div className="flex flex-col">
-                <label className="text-sm font-medium mb-1" htmlFor="roomNumber">Room Number</label>
+                <label className="text-sm font-medium mb-1" htmlFor="roomNumber">Número de habitación</label>
                 <div className="flex items-center focus-within:border-black focus-within:border-2 border rounded-lg p-3">
                   <Building2 className="w-5 h-5 text-gray-400 mr-2" />
                   <input
                     id="roomNumber"
                     type="text"
-                    placeholder="Room Number"
+                    placeholder="Número de habitación"
                     value={roomNumber}
                     onChange={(e) => setRoomNumber(e.target.value)}
                     className="w-full bg-transparent outline-none"
@@ -195,13 +196,13 @@ const[error,setError] = useState('');
                 </div>
               </div>
               <div className="flex flex-col">
-                <label className="text-sm font-medium mb-1" htmlFor="bagNumber">Bag Number</label>
+                <label className="text-sm font-medium mb-1" htmlFor="bagNumber">Número de bolsa</label>
                 <div className="flex items-center border focus-within:border-black focus-within:border-2 rounded-lg p-3">
                   <Package className="w-5 h-5 text-gray-400 mr-2" />
                   <input
                     id="bagNumber"
                     type="number"
-                    placeholder="Bag Number"
+                    placeholder="Número de bolsa"
                     value={bagNumber}
                     onChange={(e) => setBagNumber(e.target.value)}
                     className="w-full bg-transparent outline-none"
@@ -209,13 +210,13 @@ const[error,setError] = useState('');
                 </div>
               </div>
               <div className="flex flex-col">
-                <label className="text-sm font-medium mb-1" htmlFor="buildingName">Building Name</label>
+                <label className="text-sm font-medium mb-1" htmlFor="buildingName">Nombre del edificio</label>
                 <div className="flex items-center border focus-within:border-black focus-within:border-2 rounded-lg p-3">
                   <Building2 className="w-5 h-5 text-gray-400 mr-2" />
                   <input
                     id="buildingName"
                     type="text"
-                    placeholder="Building"
+                    placeholder="Edificio"
                     value={buildingName}
                     onChange={(e) => setBuildingName(e.target.value)}
                     className="w-full bg-transparent outline-none"
@@ -225,7 +226,7 @@ const[error,setError] = useState('');
             </div>
 
             <div className="space-y-2 mt-4">
-              <label className="text-sm font-medium" htmlFor="address">Address</label>
+              <label className="text-sm font-medium" htmlFor="address">Dirección</label>
               <textarea
                 id="address"
                 name="address"
@@ -233,13 +234,13 @@ const[error,setError] = useState('');
                 onChange={(e) => setAddress(e.target.value)}
                 className="w-full border rounded-lg p-3"
                 rows="3"
-                placeholder="Enter your address"
+                placeholder="Ingresa tu dirección"
               ></textarea>
             </div>
 
             <div className="flex justify-end mt-4">
               <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-lg">
-                Save Changes
+                Guardar cambios
               </button>
             </div>
           </form>
@@ -248,26 +249,26 @@ const[error,setError] = useState('');
 
         {/* Security Settings */}
         <div className="bg-white p-6 rounded-lg shadow w-full">
-          <h2 className="text-lg font-semibold">Security</h2>
-          <p className="text-sm text-gray-500 mb-4">Manage your password and security settings</p>
+          <h2 className="text-lg font-semibold">Seguridad</h2>
+          <p className="text-sm text-gray-500 mb-4">Administra tu contraseña y la configuración de seguridad</p>
 
           {passerror && (<div className="mb-4 p-3 bg-red-50 border-l-4 border-red-400 text-red-700 text-sm rounded">
             <span className="font-medium">Error:</span> {passerror}
           </div>)}
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Current Password</label>
-            <input type="password" value={currentPassword} onChange={(e)=>setCurrentPassword(e.target.value)} className="w-full border rounded-lg p-2" />
+            <label htmlFor="current-password" className="text-sm font-medium">Contraseña actual</label>
+            <input id="current-password" type="password" value={currentPassword} onChange={(e)=>setCurrentPassword(e.target.value)} className="w-full border rounded-lg p-2" />
           </div>
 
           <div className="space-y-2 mt-4">
-            <label className="text-sm font-medium">New Password</label>
-            <input type="password" value={newPassword} onChange={(e)=>setNewPassword(e.target.value)}  className="w-full border rounded-lg p-2" />
+            <label htmlFor="new-profile-password" className="text-sm font-medium">Nueva contraseña</label>
+            <input id="new-profile-password" type="password" value={newPassword} onChange={(e)=>setNewPassword(e.target.value)}  className="w-full border rounded-lg p-2" />
           </div>
           <div className="mt-4 flex gap-3">
-            <button onClick={handleUpdatePassword} className="bg-blue-600 text-white px-4 py-2 rounded-lg">Update Password</button>
+            <button onClick={handleUpdatePassword} className="bg-blue-600 text-white px-4 py-2 rounded-lg">Actualizar contraseña</button>
             <button className="bg-blue-600 text-white px-4 py-2 rounded-lg">
-              <Link to='/forgot-password'>Forgot Password</Link></button>
+              <Link to='/forgot-password'>Olvidé mi contraseña</Link></button>
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Navbar from '../Navbar/Navbar';
 import LoaderM from '../../../assets/loader/loader';
 import { toast, ToastContainer } from 'react-toastify';
+import ToastCloseButton from '../../ToastCloseButton';
 import 'react-toastify/dist/ReactToastify.css';
 import {
   Plus,
@@ -20,6 +21,16 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import axios from 'axios';
+import {
+  apiMessageEs,
+  consumptionReasonLabel,
+  formatDateEs,
+  formatDateTimeEs,
+  stockAlertMessageEs,
+  stockItemLabel,
+  stockStatusLabel,
+  stockUnitLabel,
+} from '../../../utils/localization';
 
 const Stock = () => {
   const [stockItems, setStockItems] = useState([]);
@@ -56,15 +67,15 @@ const Stock = () => {
       setAnalytics(analyticsRes.data.data || {});
       setAlerts(alertsRes.data.data || []);
       
-      if (stockRes.data.message === 'Initial stock items created') {
-        toast.success('✅ Stock initialized with 5 default items (Detergent, Soap, Fabric Softener, Bleach, Starch)', {
+      if (['Initial stock items created', 'Artículos iniciales del inventario creados'].includes(stockRes.data.message)) {
+        toast.success('✅ Inventario inicializado con 5 insumos predeterminados (Detergente, Jabón, Suavizante, Lejía y Almidón)', {
           position: 'top-right',
           autoClose: 4000,
         });
       }
     } catch (error) {
-      console.error('Error fetching data:', error.response?.data?.message || error.message);
-      toast.error('⚠️ Unable to load stock data. Please check your connection and try again.', {
+      console.error('Error al obtener los datos:', error.response?.data?.message || error.message);
+      toast.error('⚠️ No se pudieron cargar los datos del inventario. Comprueba tu conexión e inténtalo de nuevo.', {
         position: 'top-right',
         autoClose: 4000,
       });
@@ -79,7 +90,7 @@ const Stock = () => {
 
   const handleRecordConsumption = async () => {
     if (!consumptionForm.quantityUsed || !selectedStock) {
-      toast.warning('⚠️ Please enter the quantity used for tracking', {
+      toast.warning('⚠️ Ingresa la cantidad utilizada para registrarla', {
         position: 'top-right',
         autoClose: 2500,
       });
@@ -89,7 +100,7 @@ const Stock = () => {
     const quantity = parseFloat(consumptionForm.quantityUsed);
     const remaining = selectedStock.currentQuantity - quantity;
 
-    const toastId = toast.loading('⏳ Recording consumption data...', {
+    const toastId = toast.loading('⏳ Registrando datos de consumo...', {
       position: 'top-right',
     });
 
@@ -106,16 +117,16 @@ const Stock = () => {
       let alertNotification = '';
       
       if (response.data.alertTriggered) {
-        alertNotification = '\n🔔 ⚠️ ALERT TRIGGERED: Stock below reorder level!';
-        warningMsg = ` ⚠️ Stock now CRITICAL! Only ${remaining.toFixed(2)} ${selectedStock.unit} left.`;
+        alertNotification = '\n🔔 ⚠️ ALERTA ACTIVADA: ¡El inventario está por debajo del nivel de reposición!';
+        warningMsg = ` ⚠️ ¡Nivel CRÍTICO! Solo quedan ${remaining.toFixed(2)} ${stockUnitLabel(selectedStock.unit)}.`;
       } else if (remaining <= selectedStock.reorderLevel) {
-        warningMsg = ` ⚠️ Stock now LOW! Only ${remaining.toFixed(2)} ${selectedStock.unit} left.`;
+        warningMsg = ` ⚠️ ¡Nivel BAJO! Solo quedan ${remaining.toFixed(2)} ${stockUnitLabel(selectedStock.unit)}.`;
       } else if (remaining <= selectedStock.reorderLevel * 1.5) {
-        warningMsg = ` ⚠️ Stock getting low. Only ${remaining.toFixed(2)} ${selectedStock.unit} remaining.`;
+        warningMsg = ` ⚠️ El inventario se está agotando. Solo quedan ${remaining.toFixed(2)} ${stockUnitLabel(selectedStock.unit)}.`;
       }
 
       toast.update(toastId, {
-        render: `✅ Consumption Recorded\n📉 Used: ${quantity} ${selectedStock.unit}\n📦 Remaining: ${remaining.toFixed(2)} ${selectedStock.unit}${warningMsg}${alertNotification}`,
+        render: `✅ Consumo registrado\n📉 Utilizado: ${quantity} ${stockUnitLabel(selectedStock.unit)}\n📦 Restante: ${remaining.toFixed(2)} ${stockUnitLabel(selectedStock.unit)}${warningMsg}${alertNotification}`,
         type: response.data.alertTriggered ? 'warning' : 'success',
         isLoading: false,
         autoClose: 4000,
@@ -126,9 +137,9 @@ const Stock = () => {
       setSelectedStock(null);
       await fetchAllData();
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Unable to record consumption';
+      const errorMsg = apiMessageEs(error.response?.data?.message, 'No se pudo registrar el consumo');
       toast.update(toastId, {
-        render: `❌ Recording Failed\n${errorMsg}`,
+        render: `❌ Error al registrar\n${errorMsg}`,
         type: 'error',
         isLoading: false,
         autoClose: 4000,
@@ -138,7 +149,7 @@ const Stock = () => {
 
   const handleAddStock = async () => {
     if (!restockForm.quantityToAdd || !selectedStock) {
-      toast.warning('⚠️ Please enter the quantity to add', {
+      toast.warning('⚠️ Ingresa la cantidad que deseas añadir', {
         position: 'top-right',
         autoClose: 2500,
       });
@@ -148,7 +159,7 @@ const Stock = () => {
     const quantity = parseFloat(restockForm.quantityToAdd);
     const newTotal = selectedStock.currentQuantity + quantity;
 
-    const toastId = toast.loading('⏳ Processing restock...', {
+    const toastId = toast.loading('⏳ Procesando reposición...', {
       position: 'top-right',
     });
 
@@ -163,17 +174,19 @@ const Stock = () => {
 
       let notificationMsg = '';
       if (response.data.alertsResolved && response.data.alertsResolved > 0) {
-        notificationMsg = `\n🔔 ${response.data.alertsResolved} alert${response.data.alertsResolved > 1 ? 's' : ''} resolved - stock is healthy again!`;
+        notificationMsg = response.data.alertsResolved === 1
+          ? '\n🔔 Se resolvió 1 alerta: ¡el inventario vuelve a estar en un nivel adecuado!'
+          : `\n🔔 Se resolvieron ${response.data.alertsResolved} alertas: ¡el inventario vuelve a estar en un nivel adecuado!`;
       }
 
       const statusMsg = newTotal > selectedStock.reorderLevel * 2 
-        ? '✅ Stock is now healthy'
+        ? '✅ El inventario está ahora en un nivel adecuado'
         : newTotal > selectedStock.reorderLevel
-        ? '⚠️ Stock is adequate but monitor usage'
-        : '⚠️ Stock is still below optimal level';
+        ? '⚠️ El inventario es suficiente, pero debe supervisarse el consumo'
+        : '⚠️ El inventario continúa por debajo del nivel óptimo';
 
       toast.update(toastId, {
-        render: `✅ Restock Completed\n📦 Added: ${quantity} ${selectedStock.unit}\n📈 Total: ${newTotal.toFixed(2)} ${selectedStock.unit}\n${statusMsg}${notificationMsg}`,
+        render: `✅ Reposición completada\n📦 Añadido: ${quantity} ${stockUnitLabel(selectedStock.unit)}\n📈 Total: ${newTotal.toFixed(2)} ${stockUnitLabel(selectedStock.unit)}\n${statusMsg}${notificationMsg}`,
         type: 'success',
         isLoading: false,
         autoClose: 4000,
@@ -184,9 +197,9 @@ const Stock = () => {
       setSelectedStock(null);
       await fetchAllData();
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Unable to add stock';
+      const errorMsg = apiMessageEs(error.response?.data?.message, 'No se pudo añadir inventario');
       toast.update(toastId, {
-        render: `❌ Restock Failed\n${errorMsg}`,
+        render: `❌ Error en la reposición\n${errorMsg}`,
         type: 'error',
         isLoading: false,
         autoClose: 4000,
@@ -238,9 +251,9 @@ const Stock = () => {
               <div className="flex-1">
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center">
                   <Droplet className="h-8 w-8 mr-3 text-blue-600" />
-                  Stock Management
+                  Gestión de inventario
                 </h1>
-                <p className="text-gray-600 mt-2">Track and manage your inventory efficiently</p>
+                <p className="text-gray-600 mt-2">Controla y gestiona tu inventario de forma eficiente</p>
               </div>
               <button
                 onClick={() => {
@@ -251,7 +264,7 @@ const Stock = () => {
                 className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg flex items-center justify-center w-full sm:w-auto"
               >
                 <Plus className="h-5 w-5 mr-2" />
-                Add Stock
+                Añadir inventario
               </button>
             </div>
           </div>
@@ -269,7 +282,7 @@ const Stock = () => {
                     : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
                 }`}
               >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {{ overview: 'Resumen', analytics: 'Análisis', alerts: 'Alertas', history: 'Historial' }[tab]}
               </button>
             ))}
           </div>
@@ -278,26 +291,26 @@ const Stock = () => {
             <div>
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white rounded-lg p-4 border-l-4 border-blue-500 shadow-sm">
-                  <p className="text-gray-500 text-sm mb-2">Total Items</p>
+                  <p className="text-gray-500 text-sm mb-2">Total de insumos</p>
                   <p className="text-3xl font-bold text-gray-800">{analytics?.totalItems || 0}</p>
                 </div>
 
                 <div className="bg-white rounded-lg p-4 border-l-4 border-red-500 shadow-sm">
-                  <p className="text-gray-500 text-sm mb-2">Low Stock</p>
+                  <p className="text-gray-500 text-sm mb-2">Inventario bajo</p>
                   <p className="text-3xl font-bold text-red-600">
                     {analytics?.lowStockItems?.length || 0}
                   </p>
                 </div>
 
                 <div className="bg-white rounded-lg p-4 border-l-4 border-yellow-500 shadow-sm">
-                  <p className="text-gray-500 text-sm mb-2">Medium Stock</p>
+                  <p className="text-gray-500 text-sm mb-2">Inventario medio</p>
                   <p className="text-3xl font-bold text-yellow-600">
                     {analytics?.mediumStockItems?.length || 0}
                   </p>
                 </div>
 
                 <div className="bg-white rounded-lg p-4 border-l-4 border-green-500 shadow-sm">
-                  <p className="text-gray-500 text-sm mb-2">Today's Usage</p>
+                  <p className="text-gray-500 text-sm mb-2">Consumo de hoy</p>
                   <p className="text-3xl font-bold text-green-600">
                     {analytics?.totalConsumptionToday?.toFixed(2) || 0}
                   </p>
@@ -322,9 +335,9 @@ const Stock = () => {
                         <div className="flex items-center gap-3 flex-1">
                           {getStatusIcon(item.status)}
                           <div className="flex-1">
-                            <h3 className="font-bold text-lg">{item.itemName}</h3>
+                            <h3 className="font-bold text-lg">{stockItemLabel(item.itemName)}</h3>
                             <p className="text-sm opacity-75">
-                              {item.currentQuantity} {item.unit} • Status: {item.status}
+                              {item.currentQuantity} {stockUnitLabel(item.unit)} • Estado: {stockStatusLabel(item.status)}
                             </p>
                           </div>
                         </div>
@@ -339,7 +352,7 @@ const Stock = () => {
                         <div className="bg-white border-t p-4">
                           <div className="mb-4">
                             <div className="flex justify-between mb-2">
-                              <span className="text-sm font-medium">Stock Level</span>
+                              <span className="text-sm font-medium">Nivel de inventario</span>
                               <span className="text-sm text-gray-600">
                                 {((item.currentQuantity / (item.reorderLevel * 3)) * 100).toFixed(0)}%
                               </span>
@@ -365,29 +378,29 @@ const Stock = () => {
 
                           <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
-                              <p className="text-xs text-gray-600 mb-1">Reorder Level</p>
+                              <p className="text-xs text-gray-600 mb-1">Nivel de reposición</p>
                               <p className="font-semibold text-gray-800">
-                                {item.reorderLevel} {item.unit}
+                                {item.reorderLevel} {stockUnitLabel(item.unit)}
                               </p>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-600 mb-1">Daily Avg</p>
+                              <p className="text-xs text-gray-600 mb-1">Promedio diario</p>
                               <p className="font-semibold text-gray-800">
-                                {item.averageDailyConsumption?.toFixed(2) || 0} {item.unit}
+                                {item.averageDailyConsumption?.toFixed(2) || 0} {stockUnitLabel(item.unit)}
                               </p>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-600 mb-1">Last Restock</p>
+                              <p className="text-xs text-gray-600 mb-1">Última reposición</p>
                               <p className="font-semibold text-gray-800 text-sm">
                                 {new Date(item.lastRestockDate).toLocaleDateString()}
                               </p>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-600 mb-1">Est. Depletion</p>
+                              <p className="text-xs text-gray-600 mb-1">Agotamiento estimado</p>
                               <p className="font-semibold text-gray-800 text-sm">
                                 {item.estimatedDepletionDate
-                                  ? new Date(item.estimatedDepletionDate).toLocaleDateString()
-                                  : 'N/A'}
+                                  ? formatDateEs(item.estimatedDepletionDate, { dateStyle: 'medium' })
+                                  : 'No disponible'}
                               </p>
                             </div>
                           </div>
@@ -405,7 +418,7 @@ const Stock = () => {
                               className="flex-1 bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded text-sm font-medium flex items-center justify-center gap-2"
                             >
                               <TrendingDown className="h-4 w-4" />
-                              Record Usage
+                              Registrar consumo
                             </button>
                             <button
                               onClick={() => {
@@ -416,7 +429,7 @@ const Stock = () => {
                               className="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm font-medium flex items-center justify-center gap-2"
                             >
                               <Plus className="h-4 w-4" />
-                              Restock
+                              Reponer
                             </button>
                           </div>
                         </div>
@@ -425,7 +438,7 @@ const Stock = () => {
                   ))
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-gray-500">No stock items found</p>
+                    <p className="text-gray-500">No se encontraron insumos</p>
                   </div>
                 )}
               </div>
@@ -437,48 +450,48 @@ const Stock = () => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-6 shadow-md border border-purple-200">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-lg text-purple-900">Today's Total Usage</h3>
+                    <h3 className="font-bold text-lg text-purple-900">Consumo total de hoy</h3>
                     <TrendingDown className="h-6 w-6 text-purple-600" />
                   </div>
                   <p className="text-4xl font-bold text-purple-700 mb-2">
                     {analytics?.totalConsumptionToday?.toFixed(1) || 0}
                   </p>
-                  <p className="text-sm text-purple-600">Combined across all items</p>
+                  <p className="text-sm text-purple-600">Combinado entre todos los insumos</p>
                   <div className="mt-4 pt-4 border-t border-purple-200">
                     <p className="text-xs text-purple-600">
-                      📊 Track your daily consumption patterns to optimize stock levels
+                      📊 Controla tus patrones de consumo diario para optimizar los niveles de inventario
                     </p>
                   </div>
                 </div>
 
                 <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-6 shadow-md border border-red-200">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-lg text-red-900">Critical Items</h3>
+                    <h3 className="font-bold text-lg text-red-900">Insumos críticos</h3>
                     <AlertTriangle className="h-6 w-6 text-red-600" />
                   </div>
                   <p className="text-4xl font-bold text-red-700 mb-2">
                     {analytics?.lowStockItems?.length || 0}
                   </p>
-                  <p className="text-sm text-red-600">Items below reorder level</p>
+                  <p className="text-sm text-red-600">Insumos por debajo del nivel de reposición</p>
                   <div className="mt-4 pt-4 border-t border-red-200">
                     <p className="text-xs text-red-600">
-                      ⚠️ Immediate action needed - restock these items
+                      ⚠️ Se requiere una acción inmediata: repón estos insumos
                     </p>
                   </div>
                 </div>
 
                 <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6 shadow-md border border-green-200">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-lg text-green-900">Healthy Items</h3>
+                    <h3 className="font-bold text-lg text-green-900">Insumos en nivel adecuado</h3>
                     <TrendingUp className="h-6 w-6 text-green-600" />
                   </div>
                   <p className="text-4xl font-bold text-green-700 mb-2">
                     {analytics?.highStockItems?.length || 0}
                   </p>
-                  <p className="text-sm text-green-600">Items in optimal condition</p>
+                  <p className="text-sm text-green-600">Insumos en condiciones óptimas</p>
                   <div className="mt-4 pt-4 border-t border-green-200">
                     <p className="text-xs text-green-600">
-                      ✅ Stock levels are adequate and well-managed
+                      ✅ Los niveles de inventario son adecuados y están bien gestionados
                     </p>
                   </div>
                 </div>
@@ -488,7 +501,7 @@ const Stock = () => {
                 <div className="bg-white rounded-lg p-6 shadow-md border border-gray-200">
                   <h3 className="font-bold text-lg mb-6 flex items-center">
                     <BarChart3 className="h-6 w-6 mr-3 text-blue-600" />
-                    Daily Consumption Breakdown
+                    Desglose del consumo diario
                   </h3>
                   <div className="space-y-4">
                     {stockItems.length > 0 ? (
@@ -498,10 +511,10 @@ const Stock = () => {
                         return (
                           <div key={item._id} className="group">
                             <div className="flex justify-between items-center mb-2">
-                              <span className="font-medium text-gray-800">{item.itemName}</span>
+                              <span className="font-medium text-gray-800">{stockItemLabel(item.itemName)}</span>
                               <div className="text-right">
                                 <span className="text-sm font-bold text-blue-600">{avgDaily.toFixed(2)}</span>
-                                <span className="text-xs text-gray-500 ml-1">{item.unit}/day</span>
+                                <span className="text-xs text-gray-500 ml-1">{stockUnitLabel(item.unit)}/día</span>
                               </div>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
@@ -513,13 +526,13 @@ const Stock = () => {
                               ></div>
                             </div>
                             <p className="text-xs text-gray-500 mt-1">
-                              At current usage: {item.currentQuantity > 0 ? (item.currentQuantity / avgDaily).toFixed(1) : '∞'} days supply remaining
+                              Con el consumo actual: {item.currentQuantity > 0 ? (item.currentQuantity / avgDaily).toFixed(1) : '∞'} días de existencias restantes
                             </p>
                           </div>
                         );
                       })
                     ) : (
-                      <p className="text-gray-500 text-sm">No consumption data available</p>
+                      <p className="text-gray-500 text-sm">No hay datos de consumo disponibles</p>
                     )}
                   </div>
                 </div>
@@ -527,14 +540,14 @@ const Stock = () => {
                 <div className="bg-white rounded-lg p-6 shadow-md border border-gray-200">
                   <h3 className="font-bold text-lg mb-6 flex items-center">
                     <BarChart3 className="h-6 w-6 mr-3 text-green-600" />
-                    Stock Health Overview
+                    Resumen del estado del inventario
                   </h3>
                   <div className="space-y-5">
                     <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                       <div className="flex justify-between items-center mb-3">
                         <div className="flex items-center gap-2">
                           <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                          <span className="font-semibold text-gray-800">Healthy Stock</span>
+                          <span className="font-semibold text-gray-800">Inventario adecuado</span>
                         </div>
                         <span className="text-lg font-bold text-green-600">
                           {analytics?.highStockItems?.length || 0}/{analytics?.totalItems || 0}
@@ -550,14 +563,14 @@ const Stock = () => {
                           }}
                         ></div>
                       </div>
-                      <p className="text-xs text-green-600 mt-2">✅ Items in optimal condition</p>
+                      <p className="text-xs text-green-600 mt-2">✅ Insumos en condiciones óptimas</p>
                     </div>
 
                     <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                       <div className="flex justify-between items-center mb-3">
                         <div className="flex items-center gap-2">
                           <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                          <span className="font-semibold text-gray-800">Monitor Closely</span>
+                          <span className="font-semibold text-gray-800">Supervisar de cerca</span>
                         </div>
                         <span className="text-lg font-bold text-yellow-600">
                           {analytics?.mediumStockItems?.length || 0}/{analytics?.totalItems || 0}
@@ -573,14 +586,14 @@ const Stock = () => {
                           }}
                         ></div>
                       </div>
-                      <p className="text-xs text-yellow-600 mt-2">⚠️ Restock soon to maintain supply</p>
+                      <p className="text-xs text-yellow-600 mt-2">⚠️ Repón pronto para mantener las existencias</p>
                     </div>
 
                     <div className="p-4 bg-red-50 rounded-lg border border-red-200">
                       <div className="flex justify-between items-center mb-3">
                         <div className="flex items-center gap-2">
                           <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                          <span className="font-semibold text-gray-800">Critical Level</span>
+                          <span className="font-semibold text-gray-800">Nivel crítico</span>
                         </div>
                         <span className="text-lg font-bold text-red-600">
                           {analytics?.lowStockItems?.length || 0}/{analytics?.totalItems || 0}
@@ -596,7 +609,7 @@ const Stock = () => {
                           }}
                         ></div>
                       </div>
-                      <p className="text-xs text-red-600 mt-2">🚨 Immediate action required</p>
+                      <p className="text-xs text-red-600 mt-2">🚨 Se requiere una acción inmediata</p>
                     </div>
                   </div>
                 </div>
@@ -615,7 +628,7 @@ const Stock = () => {
                           <AlertTriangle className="h-6 w-6 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm text-red-600">Critical Alerts</p>
+                          <p className="text-sm text-red-600">Alertas críticas</p>
                           <p className="text-2xl font-bold text-red-700">
                             {alerts.filter(a => a.severity === 'critical' && !a.isResolved).length}
                           </p>
@@ -629,7 +642,7 @@ const Stock = () => {
                           <AlertCircle className="h-6 w-6 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm text-yellow-600">Warnings</p>
+                          <p className="text-sm text-yellow-600">Advertencias</p>
                           <p className="text-2xl font-bold text-yellow-700">
                             {alerts.filter(a => a.severity === 'warning' && !a.isResolved).length}
                           </p>
@@ -643,7 +656,7 @@ const Stock = () => {
                           <AlertCircle className="h-6 w-6 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm text-blue-600">Active Alerts</p>
+                          <p className="text-sm text-blue-600">Alertas activas</p>
                           <p className="text-2xl font-bold text-blue-700">
                             {alerts.filter(a => !a.isResolved).length}
                           </p>
@@ -657,7 +670,7 @@ const Stock = () => {
                           <CheckCircle className="h-6 w-6 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm text-green-600">Resolved</p>
+                          <p className="text-sm text-green-600">Resueltas</p>
                           <p className="text-2xl font-bold text-green-700">
                             {alerts.filter(a => a.isResolved).length}
                           </p>
@@ -671,7 +684,7 @@ const Stock = () => {
                       <div>
                         <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                           <AlertTriangle className="h-5 w-5 text-red-600" />
-                          Active Alerts
+                          Alertas activas
                         </h3>
                         <div className="space-y-3">
                           {alerts
@@ -704,13 +717,13 @@ const Stock = () => {
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                      <p className="font-bold text-gray-900 text-lg">{alert.itemName}</p>
+                                      <p className="font-bold text-gray-900 text-lg">{stockItemLabel(alert.itemName)}</p>
                                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                                         alert.severity === 'critical'
                                           ? 'bg-red-200 text-red-800'
                                           : 'bg-yellow-200 text-yellow-800'
                                       }`}>
-                                        {alert.severity === 'critical' ? '🚨 CRITICAL' : '⚠️ WARNING'}
+                                        {alert.severity === 'critical' ? '🚨 CRÍTICO' : '⚠️ ADVERTENCIA'}
                                       </span>
                                     </div>
                                     
@@ -719,36 +732,36 @@ const Stock = () => {
                                         ? 'text-red-800'
                                         : 'text-yellow-800'
                                     }`}>
-                                      {alert.message}
+                                      {stockAlertMessageEs(alert.message, alert.itemName)}
                                     </p>
 
                                     <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-gray-200">
                                       <div className="bg-white bg-opacity-60 rounded p-2">
-                                        <p className="text-xs text-gray-600">Current Level</p>
-                                        <p className="font-bold text-gray-900">{alert.currentQuantity} {alert.itemName === 'Detergent' || alert.itemName === 'Fabric Softener' || alert.itemName === 'Bleach' ? 'L' : 'Kg'}</p>
+                                        <p className="text-xs text-gray-600">Nivel actual</p>
+                                        <p className="font-bold text-gray-900">{alert.currentQuantity} {alert.itemName === 'Detergent' || alert.itemName === 'Fabric Softener' || alert.itemName === 'Bleach' ? 'L' : 'kg'}</p>
                                       </div>
                                       <div className="bg-white bg-opacity-60 rounded p-2">
-                                        <p className="text-xs text-gray-600">Reorder Level</p>
-                                        <p className="font-bold text-gray-900">{alert.reorderLevel} {alert.itemName === 'Detergent' || alert.itemName === 'Fabric Softener' || alert.itemName === 'Bleach' ? 'L' : 'Kg'}</p>
+                                        <p className="text-xs text-gray-600">Nivel de reposición</p>
+                                        <p className="font-bold text-gray-900">{alert.reorderLevel} {alert.itemName === 'Detergent' || alert.itemName === 'Fabric Softener' || alert.itemName === 'Bleach' ? 'L' : 'kg'}</p>
                                       </div>
                                     </div>
 
                                     <div className="mt-3 flex items-center gap-2 text-xs text-gray-600">
                                       <Clock className="h-3 w-3" />
-                                      <span>Alert Generated: {new Date(alert.date).toLocaleString()}</span>
+                                      <span>Alerta generada: {formatDateTimeEs(alert.date)}</span>
                                     </div>
 
                                     {alert.severity === 'critical' && (
                                       <div className="mt-3 bg-red-100 border border-red-300 rounded px-3 py-2">
                                         <p className="text-sm font-semibold text-red-800">
-                                          ⚠️ Action Required: Please restock this item immediately to avoid interruption
+                                          ⚠️ Acción requerida: repón este insumo inmediatamente para evitar interrupciones
                                         </p>
                                       </div>
                                     )}
                                     {alert.severity === 'warning' && (
                                       <div className="mt-3 bg-yellow-100 border border-yellow-300 rounded px-3 py-2">
                                         <p className="text-sm font-semibold text-yellow-800">
-                                          ⚠️ Monitor Closely: Stock is getting low - plan for restocking soon
+                                          ⚠️ Supervisar de cerca: el inventario se está agotando; planifica una reposición pronto
                                         </p>
                                       </div>
                                     )}
@@ -764,7 +777,7 @@ const Stock = () => {
                       <div>
                         <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                           <CheckCircle className="h-5 w-5 text-green-600" />
-                          Resolved Alerts
+                          Alertas resueltas
                         </h3>
                         <div className="space-y-3">
                           {alerts
@@ -781,41 +794,41 @@ const Stock = () => {
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                      <p className="font-bold text-gray-900 text-lg line-through text-gray-600">{alert.itemName}</p>
+                                      <p className="font-bold text-gray-900 text-lg line-through text-gray-600">{stockItemLabel(alert.itemName)}</p>
                                       <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-200 text-green-800">
-                                        ✅ RESOLVED
+                                        ✅ RESUELTA
                                       </span>
                                     </div>
                                     
                                     <p className="mt-2 font-medium text-gray-700 line-through">
-                                      {alert.message}
+                                      {stockAlertMessageEs(alert.message, alert.itemName)}
                                     </p>
 
                                     <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-gray-200">
                                       <div className="bg-white bg-opacity-60 rounded p-2">
-                                        <p className="text-xs text-gray-600">Final Level</p>
-                                        <p className="font-bold text-gray-900">{alert.currentQuantity} {alert.itemName === 'Detergent' || alert.itemName === 'Fabric Softener' || alert.itemName === 'Bleach' ? 'L' : 'Kg'}</p>
+                                        <p className="text-xs text-gray-600">Nivel final</p>
+                                        <p className="font-bold text-gray-900">{alert.currentQuantity} {alert.itemName === 'Detergent' || alert.itemName === 'Fabric Softener' || alert.itemName === 'Bleach' ? 'L' : 'kg'}</p>
                                       </div>
                                       <div className="bg-white bg-opacity-60 rounded p-2">
-                                        <p className="text-xs text-gray-600">Reorder Level</p>
-                                        <p className="font-bold text-gray-900">{alert.reorderLevel} {alert.itemName === 'Detergent' || alert.itemName === 'Fabric Softener' || alert.itemName === 'Bleach' ? 'L' : 'Kg'}</p>
+                                        <p className="text-xs text-gray-600">Nivel de reposición</p>
+                                        <p className="font-bold text-gray-900">{alert.reorderLevel} {alert.itemName === 'Detergent' || alert.itemName === 'Fabric Softener' || alert.itemName === 'Bleach' ? 'L' : 'kg'}</p>
                                       </div>
                                     </div>
 
                                     <div className="mt-3 flex flex-col gap-1 text-xs text-gray-600">
                                       <div className="flex items-center gap-2">
                                         <Clock className="h-3 w-3" />
-                                        <span>Alert Generated: {new Date(alert.date).toLocaleString()}</span>
+                                        <span>Alerta generada: {formatDateTimeEs(alert.date)}</span>
                                       </div>
                                       <div className="flex items-center gap-2">
                                         <CheckCircle className="h-3 w-3" />
-                                        <span>Resolved: {new Date(alert.resolvedAt).toLocaleString()}</span>
+                                        <span>Resuelta: {formatDateTimeEs(alert.resolvedAt)}</span>
                                       </div>
                                     </div>
 
                                     <div className="mt-3 bg-green-100 border border-green-300 rounded px-3 py-2">
                                       <p className="text-sm font-semibold text-green-800">
-                                        ✅ Stock replenished - alert no longer active
+                                        ✅ Inventario repuesto: la alerta ya no está activa
                                       </p>
                                     </div>
                                   </div>
@@ -834,9 +847,9 @@ const Stock = () => {
                       <CheckCircle className="h-8 w-8 text-white" />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-green-900 mb-2">All Clear! ✅</p>
-                  <p className="text-green-700 mb-1">No active alerts at the moment</p>
-                  <p className="text-sm text-green-600">All stock levels are healthy and well-managed. Keep up the good work!</p>
+                  <p className="text-xl font-bold text-green-900 mb-2">¡Todo en orden! ✅</p>
+                  <p className="text-green-700 mb-1">No hay alertas activas en este momento</p>
+                  <p className="text-sm text-green-600">Todos los niveles de inventario son adecuados y están bien gestionados. ¡Sigue así!</p>
                 </div>
               )}
             </div>
@@ -849,7 +862,7 @@ const Stock = () => {
                   <div key={item._id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
                     <h3 className="font-bold text-gray-800 mb-3 flex items-center">
                       <Calendar className="h-5 w-5 mr-2 text-blue-600" />
-                      {item.itemName} - Consumption History
+                      {stockItemLabel(item.itemName)} - Historial de consumo
                     </h3>
                     {item.consumptionHistory && item.consumptionHistory.length > 0 ? (
                       <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -864,21 +877,21 @@ const Stock = () => {
                                 <Clock className="h-4 w-4 text-gray-400" />
                                 <div className="flex-1">
                                   <p className="text-sm font-medium text-gray-800">
-                                    {entry.reason}
+                                    {consumptionReasonLabel(entry.reason)}
                                   </p>
                                   <p className="text-xs text-gray-500">
-                                    {new Date(entry.date).toLocaleString()}
+                                    {formatDateTimeEs(entry.date)}
                                   </p>
                                 </div>
                               </div>
                               <p className="text-sm font-bold text-gray-800">
-                                -{entry.quantityUsed} {item.unit}
+                                -{entry.quantityUsed} {stockUnitLabel(item.unit)}
                               </p>
                             </div>
                           ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500">No consumption history</p>
+                      <p className="text-sm text-gray-500">No hay historial de consumo</p>
                     )}
                   </div>
                 ))}
@@ -892,7 +905,7 @@ const Stock = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Add Stock</h2>
+              <h2 className="text-xl font-bold text-gray-800">Añadir inventario</h2>
               <button
                 onClick={() => {
                   setShowAddStockModal(false);
@@ -907,17 +920,17 @@ const Stock = () => {
             {selectedStock ? (
               <div className="space-y-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 mb-2">Item</p>
-                  <p className="text-lg font-bold text-gray-800">{selectedStock.itemName}</p>
+                  <p className="text-sm font-medium text-gray-600 mb-2">Insumo</p>
+                  <p className="text-lg font-bold text-gray-800">{stockItemLabel(selectedStock.itemName)}</p>
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 block mb-2">
-                    Quantity to Add ({selectedStock.unit})
+                    Cantidad que añadir ({stockUnitLabel(selectedStock.unit)})
                   </label>
                   <input
                     type="number"
-                    placeholder="Enter quantity"
+                    placeholder="Ingresa la cantidad"
                     value={restockForm.quantityToAdd}
                     onChange={(e) =>
                       setRestockForm({ ...restockForm, quantityToAdd: e.target.value })
@@ -928,10 +941,10 @@ const Stock = () => {
 
                 <div>
                   <label className="text-sm font-medium text-gray-700 block mb-2">
-                    Notes (Optional)
+                    Notas (opcionales)
                   </label>
                   <textarea
-                    placeholder="Add notes..."
+                    placeholder="Añade notas..."
                     value={restockForm.notes}
                     onChange={(e) =>
                       setRestockForm({ ...restockForm, notes: e.target.value })
@@ -949,13 +962,13 @@ const Stock = () => {
                     }}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                   >
-                    Cancel
+                    Cancelar
                   </button>
                   <button
                     onClick={handleAddStock}
                     className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   >
-                    Add Stock
+                    Añadir inventario
                   </button>
                 </div>
               </div>
@@ -970,9 +983,9 @@ const Stock = () => {
                     }}
                     className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition"
                   >
-                    <p className="font-medium text-gray-800">{item.itemName}</p>
+                    <p className="font-medium text-gray-800">{stockItemLabel(item.itemName)}</p>
                     <p className="text-sm text-gray-600">
-                      Current: {item.currentQuantity} {item.unit}
+                      Actual: {item.currentQuantity} {stockUnitLabel(item.unit)}
                     </p>
                   </button>
                 ))}
@@ -986,7 +999,7 @@ const Stock = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Record Consumption</h2>
+              <h2 className="text-xl font-bold text-gray-800">Registrar consumo</h2>
               <button
                 onClick={() => {
                   setShowConsumptionModal(false);
@@ -1000,23 +1013,23 @@ const Stock = () => {
 
             <div className="space-y-4">
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-2">Item</p>
-                <p className="text-lg font-bold text-gray-800">{selectedStock?.itemName}</p>
+                <p className="text-sm font-medium text-gray-600 mb-2">Insumo</p>
+                <p className="text-lg font-bold text-gray-800">{stockItemLabel(selectedStock?.itemName)}</p>
               </div>
 
               <div>
                 <p className="text-sm text-gray-600 mb-2">
-                  Available: {selectedStock?.currentQuantity} {selectedStock?.unit}
+                  Disponible: {selectedStock?.currentQuantity} {stockUnitLabel(selectedStock?.unit)}
                 </p>
               </div>
 
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-2">
-                  Quantity Used ({selectedStock?.unit})
+                  Cantidad utilizada ({stockUnitLabel(selectedStock?.unit)})
                 </label>
                 <input
                   type="number"
-                  placeholder="Enter quantity"
+                  placeholder="Ingresa la cantidad"
                   value={consumptionForm.quantityUsed}
                   onChange={(e) =>
                     setConsumptionForm({ ...consumptionForm, quantityUsed: e.target.value })
@@ -1026,7 +1039,7 @@ const Stock = () => {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-2">Reason</label>
+                <label className="text-sm font-medium text-gray-700 block mb-2">Motivo</label>
                 <select
                   value={consumptionForm.reason}
                   onChange={(e) =>
@@ -1034,10 +1047,10 @@ const Stock = () => {
                   }
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option>Daily Consumption</option>
-                  <option>Spillage</option>
-                  <option>Waste</option>
-                  <option>Other</option>
+                  <option value="Daily Consumption">Consumo diario</option>
+                  <option value="Spillage">Derrame</option>
+                  <option value="Waste">Desperdicio</option>
+                  <option value="Other">Otro</option>
                 </select>
               </div>
 
@@ -1049,13 +1062,13 @@ const Stock = () => {
                   }}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                 >
-                  Cancel
+                  Cancelar
                 </button>
                 <button
                   onClick={handleRecordConsumption}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
-                  Record
+                  Registrar
                 </button>
               </div>
             </div>
@@ -1063,6 +1076,8 @@ const Stock = () => {
         </div>
       )}
       <ToastContainer
+        aria-label="Notificaciones"
+        closeButton={ToastCloseButton}
         position="top-right"
         autoClose={3000}
         hideProgressBar={false}

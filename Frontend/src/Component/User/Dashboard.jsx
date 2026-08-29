@@ -14,36 +14,37 @@ import {
   Package,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
+import { apiMessageEs, formatDateEs, orderStatusLabel } from "../../utils/localization";
 
 const Dashboard = () => {
   const cards = [
     {
-      title: "Submit Order",
+      title: "Realizar pedido",
       icon: Shirt,
       route: "/user/submit-order",
       color: "bg-blue-500",
-      description: "Submit new laundry items for processing",
+      description: "Envía nuevas prendas para su procesamiento",
     },
     {
-      title: "Order History",
+      title: "Historial de pedidos",
       icon: History,
       route: "/user/order-history",
       color: "bg-purple-500",
-      description: "View and track your past orders",
+      description: "Consulta y sigue tus pedidos anteriores",
     },
     {
-      title: "Daily Rush",
+      title: "Horas de mayor demanda",
       icon: BarChart3,
       route: "/user/daily-rush",
       color: "bg-green-500",
-      description: "Check peak hours and plan accordingly",
+      description: "Consulta las horas de mayor demanda y planifica en consecuencia",
     },
     {
-      title: "Profile",
+      title: "Perfil",
       icon: User,
       route: "/user/profile",
       color: "bg-orange-500",
-      description: "Manage your account settings",
+      description: "Administra la configuración de tu cuenta",
     },
   ];
 
@@ -73,7 +74,7 @@ const Dashboard = () => {
         setBagNumber(data.bagNumber);
         setRoomNumber(data.roomNumber);
       } catch (error) {
-        setError(error.response?.data?.message || error.message);
+        setError(apiMessageEs(error.response?.data?.message, 'No se pudo cargar el panel'));
       } finally {
         setLoading(false);
       }
@@ -111,9 +112,9 @@ const Dashboard = () => {
       ):(
         <div className="min-h-screen bg-gray-100 p-6 ml-0 md:ml-64">
         <header className="flex justify-between items-center mb-4 flex-wrap">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Panel</h1>
           <p className="text-sm sm:text-base text-gray-600">
-            {new Date().toLocaleDateString("en-US", {
+            {new Date().toLocaleDateString("es-MX", {
               weekday: "short",
               year: "numeric",
               month: "short",
@@ -123,7 +124,7 @@ const Dashboard = () => {
         </header>
         <div className="grid grid-cols-3 gap-4 mb-6">
           <Card
-            title="Pending Orders"
+            title="Pedidos pendientes"
             value={pendingOrders}
             icon={
               <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
@@ -134,7 +135,7 @@ const Dashboard = () => {
             textColor="text-blue-800"
           />
           <Card
-            title="Total Orders"
+            title="Total de pedidos"
             value={totalOrders}
             icon={
               <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
@@ -145,8 +146,8 @@ const Dashboard = () => {
             textColor="text-purple-800"
           />
           <Card
-            title="Current Status"
-            value="Active"
+            title="Estado actual"
+            value="Activo"
             icon={
               <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
                 <Loader2 className="w-6 h-6 text-white animate-spin" />
@@ -160,14 +161,14 @@ const Dashboard = () => {
             {orders.length>0 && (
                <section>
                <div className="bg-white p-4 rounded-lg shadow-md">
-                 <h2 className="text-xl font-semibold mb-2">Recent Order</h2>
+                 <h2 className="text-xl font-semibold mb-2">Pedido reciente</h2>
                  {orders.length > 0 && (
                    <div className="flex justify-between items-center">
                      <div>
-                       <h3 className="font-bold">Order No. {bagNumber}</h3>
-                       <p>{orders[0]?.createdAt}</p>
+                       <h3 className="font-bold">Pedido n.º {bagNumber}</h3>
+                       <p>{formatDateEs(orders[0]?.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}</p>
                      </div>
-                     <span className="text-yellow-500 font-bold">{orders[0]?.status}</span>
+                     <span className="text-yellow-500 font-bold">{orderStatusLabel(orders[0]?.status)}</span>
                    </div>
                  )}
                </div>

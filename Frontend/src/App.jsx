@@ -17,6 +17,7 @@ import ComplaintFormSuccess from './Component/User/Complaint-Form/ComplaintFormS
 import OrderManagement from './Component/Worker/OrdersManagement/OrderManagement.jsx';
 import Stock from './Component/Worker/Stock/Stock.jsx';
 import ProtectedRoute from './Component/ProtectedRoute.jsx';
+import LandingPage from './Component/Landing/LandingPage.jsx';
 
 
 function App() {
@@ -31,7 +32,8 @@ function App() {
       <Route path="/registration" element={<Registration />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password/:token" element={<ResetPassword />} />
-    <Route index element={<div className='bg-softBlue min-h-screen'><RoleSelector /></div>} />
+    <Route index element={<LandingPage />} />
+    <Route path="/access" element={<div className='bg-softBlue min-h-screen'><RoleSelector /></div>} />
     <Route path="/user/userdashboard" element={user(<div className="bg-softBlue min-h-screen"><Dashboard /></div>)} />
     <Route path="/user/order-history" element={user(<div className="bg-historybg min-h-screen"><Orderhistory /></div>)} />
     <Route path="/user/submit-order" element={user(<div className="bg-historybg min-h-screen"><Submitorder /></div>)} />

@@ -11,7 +11,7 @@ const getUserProfile = async (req,res,next) => {
         const user = await User.findById(req.user.userId)
 
         if(!user){
-           return res.status(404).json({message:"User not found"});
+           return res.status(404).json({message:"Usuario no encontrado"});
         }
 
         res.json(profileDto(user));
@@ -29,7 +29,7 @@ const updateUserProfile = async (req,res,next) => {
 
         // console.log("User Before Update:", user);
         if(!user){
-            return res.status(404).json({message:"User not Found"});
+            return res.status(404).json({message:"Usuario no encontrado"});
         }
 
         // find the phone Number is larady in use 
@@ -37,7 +37,7 @@ const updateUserProfile = async (req,res,next) => {
         if(phoneNumber && phoneNumber !== user.phoneNumber){
             const existingNumber = await User.findOne({phoneNumber});
             if(existingNumber){
-                return res.status(400).json({message:"Phone Number is alredy in use"});
+                return res.status(400).json({message:"El número de teléfono ya está en uso"});
             }
            
         }
@@ -57,7 +57,7 @@ const updateUserProfile = async (req,res,next) => {
 
     //   console.log("updates user:",updateUser)
 
-        res.status(200).json({message:"Profile Update Successfully",user : profileDto(updateUser)})
+        res.status(200).json({message:"Perfil actualizado correctamente",user : profileDto(updateUser)})
 
     }catch(error){ return next(error); }
 }

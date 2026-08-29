@@ -5,6 +5,7 @@ import axios from 'axios'
 import { OrderContext } from "../SubmitOrder/OrderContext";
 import { useContext } from "react";
 import LoaderM from "../../../assets/loader/loader";
+import { formatDateEs, orderStatusLabel } from "../../../utils/localization";
 
 export default function Orderhistory() {
   const [orders, setOrders] = useState([]);
@@ -42,15 +43,15 @@ export default function Orderhistory() {
         </div>
       ) : (
         <div className="max-w-3xl mx-auto p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Order History</h1>
-          <p className="text-gray-500">View your past laundry orders</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Historial de pedidos</h1>
+          <p className="text-gray-500">Consulta tus pedidos de lavandería anteriores</p>
           <div className="bg-white shadow-md rounded-lg p-4 mt-4">
             <div className="p-4 rounded-lg border-b">
-              <h2 className="text-lg font-semibold">Recent Orders</h2>
-              <p className="text-gray-500 text-sm">View your past laundry orders</p>
+              <h2 className="text-lg font-semibold">Pedidos recientes</h2>
+              <p className="text-gray-500 text-sm">Consulta tus pedidos de lavandería anteriores</p>
             </div>
             {orders.length === 0 ? (
-              <p className="text-gray-500 text-center mt-4">No orders found.</p>
+              <p className="text-gray-500 text-center mt-4">No se encontraron pedidos.</p>
             ) : (
               orders.map((order) => (
                 <div
@@ -62,12 +63,12 @@ export default function Orderhistory() {
                       <Package className="text-blue-500 mt-6" />
                     </div>
                     <div>
-                      <h3 className="font-semibold">Order No. {bagNumber}</h3>
+                      <h3 className="font-semibold">Pedido n.º {bagNumber}</h3>
                       <p className="text-gray-600">
-                        {order.name} - Room {roomNumber}
+                        {order.name} - Habitación {roomNumber}
                       </p>
                       <p className="text-gray-500">
-                        {order.numberOfClothes} items • {order.weight} Kg
+                        {order.numberOfClothes} prendas • {order.weight} kg
                       </p>
                     </div>
                   </div>
@@ -81,9 +82,9 @@ export default function Orderhistory() {
                           : 'text-blue-600'
                       }`}
                     >
-                      {order.status}
+                      {orderStatusLabel(order.status)}
                     </p>
-                    <p className="text-gray-400 text-sm">{order.createdAt}</p>
+                    <p className="text-gray-400 text-sm">{formatDateEs(order.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}</p>
                   </div>
                 </div>
               ))

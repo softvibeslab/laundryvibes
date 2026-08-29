@@ -19,21 +19,21 @@ const{weight ,numberofitems,bagNumber} = useContext(OrderContext);
         <CheckCircle size={80} className="text-green-500 mb-4" />
 
         {/* Title */}
-        <h1 className="text-3xl font-bold">Order Submitted!</h1>
-        <p className="text-gray-500">Your laundry order has been successfully placed</p>
+        <h1 className="text-3xl font-bold">¡Pedido enviado!</h1>
+        <p className="text-gray-500">Tu pedido de lavandería se realizó correctamente</p>
 
-        {/* Order Summary */}
+        {/* Resumen del pedido */}
         <div className="bg-white shadow-md rounded-lg p-4 mt-6 w-80">
           <div className="flex justify-between text-gray-600">
-            <span>Bag Number</span>
+            <span>Número de bolsa</span>
             <span className="font-bold">{bagNumber}</span>
           </div>
           <div className="flex justify-between text-gray-600 mt-2">
-            <span>Items</span>
+            <span>Prendas</span>
             <span className="font-bold"> {numberofitems} pieces</span>
           </div>
           <div className="flex justify-between text-gray-600 mt-2">
-            <span>Weight</span>
+            <span>Peso</span>
             <span className="font-bold">{weight} Kg</span>
           </div>
         </div>
@@ -41,13 +41,13 @@ const{weight ,numberofitems,bagNumber} = useContext(OrderContext);
         {/* Redirecting Message */}
         <div className="flex items-center text-gray-500 text-sm mt-4">
           <Clock size={16} className="mr-1" />
-          Redirecting to order history • • •
+          Redirigiendo al historial de pedidos • • •
         </div>
 
         {/* Button */}
         <button className="bg-blue-600 text-white px-6 py-2 mt-4 rounded-lg flex items-center gap-2">
             <Link to='/user/order-history' >
-          View Order History →
+          Ver historial de pedidos →
             </Link>
         </button>
       </div>

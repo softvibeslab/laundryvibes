@@ -35,6 +35,8 @@ Plataforma web para administrar pedidos de lavandería, clientes, personal opera
 
 ### Funcional y conectado de extremo a extremo
 
+- Landing pública en español con funciones, perfiles, flujo operativo, beneficios y estado real del producto.
+- Acceso compartido para clientes, trabajadores y administradores desde la landing y el selector de perfiles.
 - Registro e inicio de sesión de clientes.
 - Autenticación JWT Bearer y autorización por roles en el servidor.
 - Consulta y edición del perfil del cliente.
@@ -52,7 +54,7 @@ Plataforma web para administrar pedidos de lavandería, clientes, personal opera
 
 ### Parcial o pendiente
 
-- La tarjeta **Admin** de la pantalla inicial no abre un login propio.
+- Admin utiliza el login compartido y entra al panel operativo; no dispone de una pantalla de acceso exclusiva.
 - El backend admite el rol `admin`, pero no existe una consola administrativa dedicada.
 - El primer administrador no se crea mediante una ruta pública ni un seeder versionado.
 - Daily Rush es una pantalla informativa sin lógica de negocio.
@@ -262,7 +264,8 @@ Socket.IO no transporta pedidos completos. Emite una señal `orders:refresh` par
 
 | Ruta | Vista |
 |---|---|
-| `/` | Selector de rol |
+| `/` | Landing pública |
+| `/access` | Selector de perfiles |
 | `/login` | Inicio de sesión |
 | `/registration` | Registro de cliente |
 | `/forgot-password` | Solicitud de recuperación |
@@ -975,7 +978,7 @@ Advertencia: la herramienta `login` devuelve el JWT al cliente MCP y `submit_ord
 
 ### Producto y UX
 
-- Admin carece de login/redirección y consola dedicados.
+- Admin utiliza el acceso compartido y carece de una consola dedicada.
 - Worker/admin no tienen botón de logout.
 - El logout de usuario no limpia todas las claves de `localStorage`.
 - No hay pantalla 404.
@@ -984,7 +987,7 @@ Advertencia: la herramienta `login` devuelve el JWT al cliente MCP y `submit_ord
 - El precio se calcula sólo en cliente; no es una cotización autoritativa.
 - El contexto de pedido es volátil y se pierde al recargar.
 - Algunos datos dependen del orden previo de navegación.
-- No existe i18n; la interfaz actual está principalmente en inglés.
+- No existe un framework de i18n ni selector de idioma; la interfaz y los mensajes visibles están localizados en español, mientras los valores canónicos del API permanecen estables en inglés.
 - El bundle no usa lazy loading por ruta.
 
 ### Operación

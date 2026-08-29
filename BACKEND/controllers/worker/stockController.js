@@ -15,18 +15,18 @@ const getAllStock = async (req, res) => {
 
       const createdItems = await Stock.insertMany(defaultItems);
       return res.status(201).json({
-        message: 'Initial stock items created',
+        message: 'Artículos iniciales del inventario creados',
         data: createdItems,
       });
     }
 
     res.status(200).json({
-      message: 'Stock items retrieved successfully',
+      message: 'Artículos del inventario obtenidos correctamente',
       data: stockItems,
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Error retrieving stock items',
+      message: 'Error al obtener los artículos del inventario',
     });
   }
 };
@@ -37,16 +37,16 @@ const getStockById = async (req, res) => {
     const stockItem = await Stock.findById(id);
 
     if (!stockItem) {
-      return res.status(404).json({ message: 'Stock item not found' });
+      return res.status(404).json({ message: 'Artículo del inventario no encontrado' });
     }
 
     res.status(200).json({
-      message: 'Stock item retrieved successfully',
+      message: 'Artículo del inventario obtenido correctamente',
       data: stockItem,
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Error retrieving stock item',
+      message: 'Error al obtener el artículo del inventario',
     });
   }
 };
@@ -57,14 +57,14 @@ const createStockItem = async (req, res) => {
 
     if (!itemName || currentQuantity === undefined) {
       return res.status(400).json({
-        message: 'itemName and currentQuantity are required',
+        message: 'El nombre del artículo y la cantidad actual son obligatorios',
       });
     }
 
     const existingItem = await Stock.findOne({ itemName });
     if (existingItem) {
       return res.status(400).json({
-        message: 'Stock item already exists',
+        message: 'El artículo del inventario ya existe',
       });
     }
 
@@ -79,12 +79,12 @@ const createStockItem = async (req, res) => {
     await newStock.save();
 
     res.status(201).json({
-      message: 'Stock item created successfully',
+      message: 'Artículo del inventario creado correctamente',
       data: newStock,
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Error creating stock item',
+      message: 'Error al crear el artículo del inventario',
     });
   }
 };
@@ -97,13 +97,13 @@ const addStock = async (req, res) => {
 
     if (!quantityToAdd || quantityToAdd <= 0) {
       return res.status(400).json({
-        message: 'Quantity to add must be greater than 0',
+        message: 'La cantidad que se añadirá debe ser mayor que 0',
       });
     }
 
     const stockItem = await Stock.findById(id);
     if (!stockItem) {
-      return res.status(404).json({ message: 'Stock item not found' });
+      return res.status(404).json({ message: 'Artículo del inventario no encontrado' });
     }
 
     stockItem.currentQuantity += quantityToAdd;
@@ -141,13 +141,13 @@ const addStock = async (req, res) => {
     await stockItem.save();
 
     res.status(200).json({
-      message: 'Stock added successfully',
+      message: 'Existencias añadidas correctamente',
       data: stockItem,
       alertsResolved: resolvedAlertCount,
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Error adding stock',
+      message: 'Error al añadir existencias',
     });
   }
 };
@@ -159,18 +159,18 @@ const recordConsumption = async (req, res) => {
 
     if (!quantityUsed || quantityUsed <= 0) {
       return res.status(400).json({
-        message: 'Quantity used must be greater than 0',
+        message: 'La cantidad utilizada debe ser mayor que 0',
       });
     }
 
     const stockItem = await Stock.findById(id);
     if (!stockItem) {
-      return res.status(404).json({ message: 'Stock item not found' });
+      return res.status(404).json({ message: 'Artículo del inventario no encontrado' });
     }
 
     if (stockItem.currentQuantity < quantityUsed) {
       return res.status(400).json({
-        message: 'Insufficient stock. Cannot record consumption.',
+        message: 'No hay existencias suficientes. No se puede registrar el consumo.',
         available: stockItem.currentQuantity,
         requested: quantityUsed,
       });
@@ -218,13 +218,13 @@ const recordConsumption = async (req, res) => {
     await stockItem.save();
 
     res.status(200).json({
-      message: 'Consumption recorded successfully',
+      message: 'Consumo registrado correctamente',
       data: stockItem,
       alertTriggered,
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Error recording consumption',
+      message: 'Error al registrar el consumo',
     });
   }
 };
@@ -236,7 +236,7 @@ const updateStockItem = async (req, res) => {
 
     const stockItem = await Stock.findById(id);
     if (!stockItem) {
-      return res.status(404).json({ message: 'Stock item not found' });
+      return res.status(404).json({ message: 'Artículo del inventario no encontrado' });
     }
 
     if (reorderLevel !== undefined) {
@@ -249,12 +249,12 @@ const updateStockItem = async (req, res) => {
     await stockItem.save();
 
     res.status(200).json({
-      message: 'Stock item updated successfully',
+      message: 'Artículo del inventario actualizado correctamente',
       data: stockItem,
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Error updating stock item',
+      message: 'Error al actualizar el artículo del inventario',
     });
   }
 };
@@ -291,12 +291,12 @@ const getStockAnalytics = async (req, res) => {
     });
 
     res.status(200).json({
-      message: 'Stock analytics retrieved successfully',
+      message: 'Análisis del inventario obtenido correctamente',
       data: analytics,
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Error retrieving stock analytics',
+      message: 'Error al obtener el análisis del inventario',
     });
   }
 };
@@ -335,12 +335,12 @@ const getConsumptionHistory = async (req, res) => {
     });
 
     res.status(200).json({
-      message: 'Consumption history retrieved successfully',
+      message: 'Historial de consumo obtenido correctamente',
       data: history,
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Error retrieving consumption history',
+      message: 'Error al obtener el historial de consumo',
     });
   }
 };
@@ -371,12 +371,12 @@ const getAllAlerts = async (req, res) => {
     });
 
     res.status(200).json({
-      message: 'All alerts retrieved successfully',
+      message: 'Todas las alertas se obtuvieron correctamente',
       data: allAlerts,
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Error retrieving alerts',
+      message: 'Error al obtener las alertas',
     });
   }
 };
@@ -387,16 +387,16 @@ const deleteStockItem = async (req, res) => {
 
     const stockItem = await Stock.findByIdAndDelete(id);
     if (!stockItem) {
-      return res.status(404).json({ message: 'Stock item not found' });
+      return res.status(404).json({ message: 'Artículo del inventario no encontrado' });
     }
 
     res.status(200).json({
-      message: 'Stock item deleted successfully',
+      message: 'Artículo del inventario eliminado correctamente',
       data: stockItem,
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Error deleting stock item',
+      message: 'Error al eliminar el artículo del inventario',
     });
   }
 };

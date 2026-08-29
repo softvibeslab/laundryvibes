@@ -8,14 +8,14 @@ const submitComplaint = async (req, res, next) => {
 
   // Basic validation
   if (!userId || !typeOfComplaint || !description) {
-    return res.status(400).json({ message: 'All fields are required.' });
+    return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
   }
 
   try {
     // Fetch user details (name and address) based on the userId
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
+      return res.status(404).json({ message: 'Usuario no encontrado.' });
     }
 
     // Create a new complaint
@@ -31,7 +31,7 @@ const submitComplaint = async (req, res, next) => {
     // Save the complaint to the database
     await newComplaint.save();
 
-    res.status(201).json({ message: 'Complaint submitted successfully', complaint: {
+    res.status(201).json({ message: 'Reclamación enviada correctamente', complaint: {
       id: String(newComplaint._id), bagNumber: newComplaint.bagNumber,
       typeOfComplaint: newComplaint.typeOfComplaint, description: newComplaint.description,
       createdAt: newComplaint.createdAt,

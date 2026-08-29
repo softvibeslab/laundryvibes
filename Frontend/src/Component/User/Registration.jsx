@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { RiTShirt2Line } from "react-icons/ri";
 import axios from "axios";
+import { apiMessageEs } from "../../utils/localization";
 
 const Registration = () => {
 
@@ -25,7 +26,7 @@ const handleSubmit = async (e) =>{
   setLoading(true);
 
   if (password !== confirmpassword) {
-    setError( 'Passwords do not match.' );
+    setError( 'Las contraseñas no coinciden.' );
    return
   }
 
@@ -42,7 +43,7 @@ const handleSubmit = async (e) =>{
     }
     );
     if(response.data.message){
-      setSuccess("Registration Successfull")
+      setSuccess("Registro completado correctamente")
     }
     if(response.status===201){
       setTimeout(()=>{
@@ -57,9 +58,9 @@ const handleSubmit = async (e) =>{
   catch (error) {
     // Handle specific error messages from the API
     if (error.response && error.response.data.message) {
-      setError(error.response.data.message); // Set error message from the API
+      setError(apiMessageEs(error.response.data.message));
     } else {
-      setError("An error occurred. Please try again."); // Generic error message
+      setError("Ocurrió un error. Inténtalo de nuevo."); // Generic error message
     }
   }finally{
     setLoading(false)
@@ -76,15 +77,15 @@ const handleSubmit = async (e) =>{
             <RiTShirt2Line className="w-10 h-10 text-blue-700" />
           </div>
           <h2 className="text-2xl font-bold text-gray-800 text-center">
-            Create your account
+            Crea tu cuenta
           </h2>
-          <p className="text-gray-600 text-center">Join our laundry service today</p>
+          <p className="text-gray-600 text-center">Únete hoy a nuestro servicio de lavandería</p>
         </div>
 
         {/* Success Message */}
         {success && (
           <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-400 text-green-700 text-sm rounded">
-            <span className="font-medium">Success:</span> {success}
+            <span className="font-medium">Éxito:</span> {success}
           </div>
         )}
 
@@ -98,15 +99,15 @@ const handleSubmit = async (e) =>{
         {/* Form */}
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Full Name */}
+            {/* Nombre completo */}
             <div>
               <label htmlFor="full-name" className="block text-sm font-medium text-gray-700">
-                Full Name
+                Nombre completo
               </label>
               <input
                 type="text"
                 id="full-name"
-                placeholder="John Doe"
+                placeholder="Juan Pérez"
                 className="block w-full px-4 py-2 mt-1 text-gray-700 bg-gray-50 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                 onChange={(e) => setName(e.target.value)}
               />
@@ -115,27 +116,27 @@ const handleSubmit = async (e) =>{
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
+                Correo electrónico
               </label>
               <input
                 type="email"
                 id="email"
-                placeholder="john@example.com"
+                placeholder="juan@ejemplo.com"
                 className="block w-full px-4 py-2 mt-1 text-gray-700 bg-gray-50 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                 onChange={(e) => setEmail(e.target.value)}
 
               />
             </div>
 
-            {/* Phone Number */}
+            {/* Número de teléfono */}
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                Phone Number
+                Número de teléfono
               </label>
               <input
   type="tel"
   id="phone"
-  placeholder="+91 939204XXX"
+  placeholder="+91 9392040000"
   pattern="\+91\s[0-9]{10}"
   className="block w-full px-4 py-2 mt-1 text-gray-700 bg-gray-50 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
   value={`+91 ${number}`}
@@ -144,25 +145,25 @@ const handleSubmit = async (e) =>{
 
             </div>
 
-            {/* Room Number */}
+            {/* Número de habitación */}
             <div>
               <label htmlFor="room" className="block text-sm font-medium text-gray-700">
-                Room Number
+                Número de habitación
               </label>
               <input
                 type="text"
                 id="room"
-                placeholder="Room 101"
+                placeholder="Habitación 101"
                 className="block w-full px-4 py-2 mt-1 text-gray-700 bg-gray-50 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                 onChange={(e) => setRoom(e.target.value)}
 
               />
             </div>
 
-            {/* Bag Number */}
+            {/* Número de bolsa */}
             <div>
-              <label htmlFor="room" className="block text-sm font-medium text-gray-700">
-                Bag Number
+              <label htmlFor="bag" className="block text-sm font-medium text-gray-700">
+                Número de bolsa
               </label>
               <input
                 type="text"
@@ -177,12 +178,12 @@ const handleSubmit = async (e) =>{
             {/* Building */}
             <div >
               <label htmlFor="building" className="block text-sm font-medium text-gray-700">
-                Building
+                Edificio
               </label>
               <input
                 type="text"
                 id="building"
-                placeholder="Boys-Hostel"
+                placeholder="Residencia masculina"
                 className="block w-full px-4 py-2 mt-1 text-gray-700 bg-gray-50 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                 onChange={(e) => setBuilding(e.target.value)}
 
@@ -192,27 +193,27 @@ const handleSubmit = async (e) =>{
             {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
+                Contraseña
               </label>
               <input
                 type="password"
                 id="password"
-                placeholder="Create password"
+                placeholder="Crea una contraseña"
                 className="block w-full px-4 py-2 mt-1 text-gray-700 bg-gray-50 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                 onChange={(e) => setPassword(e.target.value)}
 
               />
             </div>
 
-            {/* Confirm Password */}
+            {/* Confirmar contraseña */}
             <div>
               <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
-                Confirm Password
+                Confirmar contraseña
               </label>
               <input
                 type="password"
                 id="confirm-password"
-                placeholder="Confirm password"
+                placeholder="Confirma la contraseña"
                 className="block w-full px-4 py-2 mt-1 text-gray-700 bg-gray-50 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                 onChange={(e) =>setconfirmPassword(e.target.value)}
               />
@@ -227,14 +228,14 @@ const handleSubmit = async (e) =>{
       }`}
       disabled={loading}
     >
-      {loading ? 'Creating Account...' : 'Create Account'}
+      {loading ? 'Creando cuenta...' : 'Crear cuenta'}
     </button>
         </form>
 
         {/* Back to Login */}
         <div className="mt-4 text-center">
           <Link to="/login" className="text-sm text-blue-500 hover:underline flex items-center justify-center">
-            <span className="mr-1">&larr;</span> Back to login
+            <span className="mr-1">&larr;</span> Volver al inicio de sesión
           </Link>
         </div>
       </div>

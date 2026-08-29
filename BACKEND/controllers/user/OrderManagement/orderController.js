@@ -20,10 +20,10 @@ const submitOrder = async (req, res, next) => {
     const userId = req.user.userId;
 
     if(!Number.isInteger(numberOfClothes) || numberOfClothes < 1){
-      return res.status(400).json({message:"Number of clothes must be a positive integer"})
+      return res.status(400).json({message:"El número de prendas debe ser un número entero positivo"})
     }
     if(!Number.isFinite(weight) || weight <= 0){
-      return res.status(400).json({message:"Weight must be greater than zero"})
+      return res.status(400).json({message:"El peso debe ser mayor que cero"})
     }
 
     try {
@@ -39,7 +39,7 @@ const submitOrder = async (req, res, next) => {
 
     await newOrder.save();
     req.app.locals.io?.to('workers').emit('orders:refresh');
-    return res.status(201).json({ message: "Order submitted successfully", order: orderDto(newOrder) });
+    return res.status(201).json({ message: "Pedido enviado correctamente", order: orderDto(newOrder) });
   } catch (error) {
     return next(error);
   }
@@ -58,7 +58,7 @@ const getOrderSummary = async (req, res, next) => {
    const orders = await Order.find({userId}).sort({createdAt : -1})
 
    if(!orders || orders.length === 0 ){
-    return res.status(404).json({message:"No order found"});
+    return res.status(404).json({message:"No se encontraron pedidos"});
    }
 
   //  total orders

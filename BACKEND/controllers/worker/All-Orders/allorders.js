@@ -5,6 +5,7 @@ function orderDto(order) {
   return {
     OrderId: order._id, userName: user.name || 'N/A', phoneNumber: user.phoneNumber,
     bagNumber: user.bagNumber, numberOfItems: order.numberOfClothes, status: order.status,
+    createdAt: order.createdAt,
     date: new Date(order.createdAt).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' }),
     time: new Date(order.createdAt).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }),
   };
@@ -25,7 +26,7 @@ async function getWorkerOrders(req, res, next) {
 async function updateOrderStatus(req, res, next) {
   try {
     const order = await Order.findById(req.params.orderId).populate('userId', 'phoneNumber name');
-    if (!order) return res.status(404).json({ message: 'Order not found' });
+    if (!order) return res.status(404).json({ message: 'Pedido no encontrado' });
     const alreadyCompleted = order.status === 'Completed';
     order.status = 'Completed';
     await order.save();
@@ -37,7 +38,7 @@ async function updateOrderStatus(req, res, next) {
       try {
         const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
         await client.messages.create({
-          body: `LaundryVibes: your order ${order._id} is complete and ready.`,
+          body: `LaundryVibes: tu pedido ${order._id} está completo y listo.`,
           from: process.env.TWILIO_PHONE_NUMBER,
           to: order.userId.phoneNumber,
         });
@@ -49,7 +50,7 @@ async function updateOrderStatus(req, res, next) {
         console.error('Best-effort SMS failed', { orderId: String(order._id), name: error.name });
       }
     }
-    return res.json({ message: 'Order status updated', order: { id: order._id, status: order.status }, notification });
+    return res.json({ message: 'Estado del pedido actualizado', order: { id: order._id, status: order.status }, notification });
   } catch (error) { return next(error); }
 }
 
