@@ -4,16 +4,7 @@ const {
   calculateTotal, enabledMethod, getPaymentConfig, parseClothes, parsePrice, parseWeight,
 } = require('../../../services/paymentService');
 const { validateEvidence } = require('../../../middleware/evidenceUpload');
-const { financialDto } = require('../../../utils/orderDto');
-
-const orderDto = (order) => ({
-  id: String(order._id),
-  numberOfClothes: order.numberOfClothes,
-  weight: order.weight,
-  status: order.status,
-  createdAt: order.createdAt,
-  ...financialDto(order),
-});
+const { financialDto, orderDto } = require('../../../utils/orderDto');
 
 async function submitOrder(req, res, next) {
   const numberOfClothes = parseClothes(req.body.numberOfClothes);
@@ -61,6 +52,11 @@ async function submitOrder(req, res, next) {
         actorId: req.user.userId, actorRole: 'user', recordedAt: now,
         ...(evidence ? { evidence } : {}),
       } },
+      timeline: [{
+        type: 'created', toStatus: 'Pending', actor: { id: req.user.userId, role: 'user' },
+        comment: typeof req.body.comment === 'string' ? req.body.comment.trim().slice(0, 1000) : undefined,
+        origin: ['web', 'api'].includes(req.body.origin) ? req.body.origin : 'api', timestamp: now,
+      }],
     });
     req.app.locals.io?.to('workers').emit('orders:refresh');
     return res.status(201).json({ message: 'Pedido enviado correctamente', order: orderDto(newOrder) });

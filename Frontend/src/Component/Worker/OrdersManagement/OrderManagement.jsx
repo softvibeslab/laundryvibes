@@ -1,151 +1,120 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { ArrowUpDown, CheckCircle, CreditCard, Download, Search } from 'lucide-react';
+import { CreditCard, Filter, Search } from 'lucide-react';
 import { io } from 'socket.io-client';
 import Navbar from '../Navbar/Navbar';
 import LoaderM from '../../../assets/loader/loader';
-import NotifyAndComplete from './NotifyAndComplete';
 import PosPaymentModal from './PosPaymentModal';
-import PaymentEvidenceButton from '../../PaymentEvidenceButton';
-import { apiMessageEs, formatOrderDateEs, formatOrderTimeEs, orderStatusLabel } from '../../../utils/localization';
+import OrderDetailModal from './OrderDetailModal';
+import { apiMessageEs, formatOrderDateEs, orderStatusLabel } from '../../../utils/localization';
 import { formatMoney, getPaymentConfig } from '../../../utils/payments';
+import { ORDER_QUEUES, PAYMENT_FILTERS, buildOrderParams, canUsePos, orderId } from '../../../utils/orderWorkflow';
+
+const defaultFilters = { status: 'Pending', paymentStatus: '', workerId: '', dateFrom: '', dateTo: '', bagNumber: '', client: '', phone: '', room: '' };
+const searchFields = [
+  ['bagNumber', 'Bolsa'], ['client', 'Cliente'], ['phone', 'Teléfono'], ['room', 'Habitación'],
+];
 
 export default function OrderManagement() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const role = localStorage.getItem('role') === 'admin' ? 'admin' : 'worker';
+  const actorId = localStorage.getItem('userId') || '';
+  const base = role === 'admin' ? '/api/admin' : '/api/worker';
+  const [draft, setDraft] = useState(defaultFilters);
+  const [filters, setFilters] = useState(defaultFilters);
+  const [searchField, setSearchField] = useState('bagNumber');
+  const [searchValue, setSearchValue] = useState('');
   const [orders, setOrders] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 0, limit: 25 });
   const [methods, setMethods] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [ordersError, setOrdersError] = useState('');
-  const [configLoading, setConfigLoading] = useState(true);
-  const [configError, setConfigError] = useState('');
-  const [completionOrder, setCompletionOrder] = useState(null);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [selected, setSelected] = useState(null);
   const [paymentOrder, setPaymentOrder] = useState(null);
-  const [newestFirst, setNewestFirst] = useState(true);
+  const [listVersion, setListVersion] = useState(0);
 
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (requestedPage = pagination.page) => {
+    setLoading(true);
     try {
-      const { data } = await axios.get('/api/worker/getallorderdetails');
-      setOrders(data.orders || []);
-      setOrdersError('');
+      const { data } = await axios.get(`${base}/orders`, { params: buildOrderParams(filters, requestedPage, pagination.limit) });
+      setOrders(data.items || data.orders || []);
+      setListVersion((version) => version + 1);
+      setPagination((current) => ({ ...current, page: data.page, limit: data.limit, total: data.total, totalPages: data.totalPages }));
+      setError('');
     } catch (requestError) {
-      setOrdersError(apiMessageEs(requestError.response?.data?.message, 'No se pudieron cargar los pedidos.'));
+      setError(apiMessageEs(requestError.response?.data?.message, 'No se pudieron cargar los pedidos.'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [base, filters, pagination.limit, pagination.page]);
 
-  const fetchPaymentConfig = useCallback(async () => {
-    setConfigLoading(true);
-    setConfigError('');
-    try {
-      const config = await getPaymentConfig();
-      setMethods(config.methods || []);
-    } catch (requestError) {
-      setMethods([]);
-      setConfigError(apiMessageEs(requestError.response?.data?.message, 'No se pudieron cargar los métodos de pago.'));
-    } finally {
-      setConfigLoading(false);
-    }
-  }, []);
-
+  useEffect(() => { fetchOrders(1); }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    fetchOrders();
-    fetchPaymentConfig();
-  }, [fetchOrders, fetchPaymentConfig]);
-
+    getPaymentConfig().then((config) => setMethods(config.methods || [])).catch(() => setMethods([]));
+  }, []);
   useEffect(() => {
     const socket = io({ auth: { token: localStorage.getItem('token') } });
-    socket.on('orders:refresh', fetchOrders);
+    const refresh = () => { setNotice('Hay actualizaciones en los pedidos.'); fetchOrders(); };
+    socket.on('orders:refresh', refresh);
+    socket.on('connect_error', () => setNotice('Actualización en tiempo real no disponible; puedes recargar la lista manualmente.'));
     return () => socket.disconnect();
   }, [fetchOrders]);
 
-  const filteredOrders = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    const matches = orders.filter((order) => !query || String(order.bagNumber || '').toLowerCase().includes(query) || String(order.id || order.OrderId || '').toLowerCase().includes(query));
-    return [...matches].sort((a, b) => {
-      const difference = new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-      return newestFirst ? difference : -difference;
-    });
-  }, [newestFirst, orders, searchQuery]);
-
-  if (loading) return <div className="fixed inset-0 flex items-center justify-center bg-gray-100"><LoaderM /></div>;
+  const setDraftValue = (key, value) => setDraft((current) => ({ ...current, [key]: value }));
+  const applyFilters = (event) => {
+    event.preventDefault();
+    const cleanSearch = Object.fromEntries(searchFields.map(([key]) => [key, '']));
+    setFilters({ ...draft, ...cleanSearch, [searchField]: searchValue.trim() });
+  };
+  const selectQueue = (status) => {
+    const next = { ...draft, status };
+    setDraft(next);
+    setFilters({ ...filters, status });
+  };
+  const clearFilters = () => {
+    setDraft(defaultFilters); setFilters(defaultFilters); setSearchField('bagNumber'); setSearchValue('');
+  };
+  const posAvailable = methods.some((method) => method.enabled);
 
   return (
     <>
       <Navbar />
       <main className="min-h-screen bg-gray-50 p-4 pt-24 md:p-8 md:pt-24">
         <div className="mx-auto max-w-7xl">
-          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-            <div><h1 className="text-2xl font-bold text-gray-900">Gestión de pedidos</h1><p className="text-gray-600">Servicio y pago son acciones separadas.</p></div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <label className="relative block">
-                <span className="sr-only">Buscar pedido</span>
-                <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" aria-hidden="true" />
-                <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Bolsa o identificador…" className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 sm:w-72" />
-              </label>
-              <button type="button" onClick={() => setNewestFirst((value) => !value)} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border bg-white px-3 text-gray-700"><ArrowUpDown className="h-4 w-4" />{newestFirst ? 'Más recientes' : 'Más antiguos'}</button>
-            </div>
-          </div>
-          {ordersError && <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-red-800">{ordersError} <button type="button" onClick={fetchOrders} className="ml-2 font-bold underline">Reintentar</button></div>}
-          {configLoading && <div role="status" className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-900">Cargando métodos de pago…</div>}
-          {configError && <div role="alert" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">{configError} No se puede abrir el POS. <button type="button" onClick={fetchPaymentConfig} className="ml-2 font-bold underline">Reintentar</button></div>}
+          <header><h1 className="text-2xl font-bold text-gray-900">Flujo de pedidos</h1><p className="text-gray-600">Colas operativas, asignación, servicio y pago.</p></header>
 
-          <OrderSection
-            title="Pedidos pendientes"
-            icon={<Download className="h-5 w-5 text-yellow-600" />}
-            orders={filteredOrders.filter((order) => order.status === 'Pending')}
-            empty="No se encontraron pedidos pendientes."
-            onComplete={setCompletionOrder}
-            onPayment={setPaymentOrder}
-            posAvailable={!configLoading && !configError && methods.some((method) => method.enabled)}
-          />
-          <OrderSection
-            title="Pedidos completados"
-            icon={<CheckCircle className="h-5 w-5 text-green-600" />}
-            orders={filteredOrders.filter((order) => order.status === 'Completed')}
-            empty="No se encontraron pedidos completados."
-            onPayment={setPaymentOrder}
-            posAvailable={!configLoading && !configError && methods.some((method) => method.enabled)}
-          />
+          <nav aria-label="Colas de pedidos" className="mt-5 flex gap-2 overflow-x-auto pb-2">
+            {ORDER_QUEUES.map((queue) => <button key={queue.status} type="button" aria-current={filters.status === queue.status ? 'page' : undefined} onClick={() => selectQueue(queue.status)} className={`min-h-11 whitespace-nowrap rounded-full border px-4 font-semibold ${filters.status === queue.status ? 'border-blue-700 bg-blue-700 text-white' : 'bg-white text-gray-700 hover:border-blue-500'}`}>{queue.label}</button>)}
+          </nav>
+
+          <form onSubmit={applyFilters} className="mt-4 rounded-xl border bg-white p-4 shadow-sm">
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <label className="text-sm font-medium">Buscar por<select value={searchField} onChange={(event) => setSearchField(event.target.value)} className="mt-1 w-full rounded border px-3 py-2.5">{searchFields.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label className="text-sm font-medium">Término de búsqueda<span className="relative mt-1 block"><Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" /><input value={searchValue} onChange={(event) => setSearchValue(event.target.value)} maxLength="100" placeholder="Buscar…" className="w-full rounded border py-2.5 pl-9 pr-3" /></span></label>
+              <label className="text-sm font-medium">Pago<select value={draft.paymentStatus} onChange={(event) => setDraftValue('paymentStatus', event.target.value)} className="mt-1 w-full rounded border px-3 py-2.5">{PAYMENT_FILTERS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+              <label className="text-sm font-medium">Trabajador (ID)<input value={draft.workerId} onChange={(event) => setDraftValue('workerId', event.target.value)} placeholder="Opcional" className="mt-1 w-full rounded border px-3 py-2.5" /></label>
+              <label className="text-sm font-medium">Desde<input type="date" value={draft.dateFrom} onChange={(event) => setDraftValue('dateFrom', event.target.value)} className="mt-1 w-full rounded border px-3 py-2.5" /></label>
+              <label className="text-sm font-medium">Hasta<input type="date" value={draft.dateTo} onChange={(event) => setDraftValue('dateTo', event.target.value)} className="mt-1 w-full rounded border px-3 py-2.5" /></label>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2"><button type="submit" className="inline-flex min-h-11 items-center gap-2 rounded bg-blue-700 px-4 font-semibold text-white"><Filter className="h-4 w-4" />Aplicar filtros</button><button type="button" onClick={clearFilters} className="min-h-11 rounded border px-4 font-semibold">Limpiar</button><button type="button" onClick={() => fetchOrders()} className="min-h-11 rounded border px-4 font-semibold">Actualizar</button></div>
+          </form>
+
+          <div aria-live="polite" className="mt-3">{notice && <p role="status" className="rounded bg-blue-50 p-3 text-blue-900">{notice}</p>}{error && <p role="alert" className="rounded bg-red-50 p-3 text-red-800">{error}</p>}</div>
+
+          <section className="mt-4 overflow-hidden rounded-xl border bg-white shadow-sm" aria-label={`Pedidos: ${ORDER_QUEUES.find((queue) => queue.status === filters.status)?.label}`}>
+            <header className="flex justify-between border-b p-4"><h2 className="font-bold">{ORDER_QUEUES.find((queue) => queue.status === filters.status)?.label}</h2><span>{pagination.total} pedidos</span></header>
+            {loading ? <div className="flex justify-center p-10" role="status"><LoaderM /><span className="sr-only">Cargando pedidos</span></div> : !orders.length ? <p className="p-8 text-center text-gray-500">No hay pedidos para estos filtros.</p> : <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead className="bg-gray-50 text-gray-600"><tr><th className="px-4 py-3">Bolsa / pedido</th><th className="px-4 py-3">Cliente</th><th className="px-4 py-3">Servicio</th><th className="px-4 py-3">Asignación</th><th className="px-4 py-3">Pago</th><th className="px-4 py-3">Fecha</th><th className="px-4 py-3">Acciones</th></tr></thead><tbody>{orders.map((order) => <OrderRow key={orderId(order)} order={order} role={role} actorId={actorId} onDetail={setSelected} onPayment={setPaymentOrder} posAvailable={posAvailable} />)}</tbody></table></div>}
+            <footer className="flex flex-col items-center justify-between gap-3 border-t p-4 sm:flex-row"><p>Página {pagination.page} de {Math.max(pagination.totalPages, 1)}</p><div className="flex gap-2"><button type="button" disabled={pagination.page <= 1 || loading} onClick={() => fetchOrders(pagination.page - 1)} className="min-h-10 rounded border px-4 disabled:opacity-50">Anterior</button><button type="button" disabled={pagination.page >= pagination.totalPages || loading} onClick={() => fetchOrders(pagination.page + 1)} className="min-h-10 rounded border px-4 disabled:opacity-50">Siguiente</button></div></footer>
+          </section>
         </div>
       </main>
-
-      <NotifyAndComplete isOpen={Boolean(completionOrder)} onClose={() => setCompletionOrder(null)} order={completionOrder} fetchOrders={fetchOrders} />
-      {paymentOrder && <PosPaymentModal order={paymentOrder} methods={methods} onClose={() => setPaymentOrder(null)} onSaved={fetchOrders} />}
+      {selected && <OrderDetailModal order={selected} role={role} actorId={actorId} refreshVersion={listVersion} onClose={() => setSelected(null)} onChanged={() => fetchOrders()} onPayment={posAvailable ? (order) => { setPaymentOrder(order); } : null} />}
+      {paymentOrder && <PosPaymentModal order={paymentOrder} methods={methods} onClose={() => setPaymentOrder(null)} onSaved={() => { setPaymentOrder(null); fetchOrders(); }} />}
     </>
   );
 }
 
-function OrderSection({ title, icon, orders, empty, onComplete, onPayment, posAvailable }) {
-  return (
-    <section className="mt-6 overflow-hidden rounded-xl bg-white shadow-sm">
-      <header className="flex items-center gap-3 border-b p-5">{icon}<h2 className="text-lg font-bold">{title}</h2><span className="rounded-full bg-gray-100 px-2 py-0.5 text-sm">{orders.length}</span></header>
-      {orders.length ? (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] text-left text-sm">
-            <thead className="bg-gray-50 text-gray-600"><tr><th className="px-5 py-3">Pedido</th><th className="px-5 py-3">Cliente</th><th className="px-5 py-3">Servicio</th><th className="px-5 py-3">Precio</th><th className="px-5 py-3">Pago</th><th className="px-5 py-3">Fecha</th><th className="px-5 py-3">Acciones</th></tr></thead>
-            <tbody>
-              {orders.map((order) => {
-                const orderId = order.id || order.OrderId;
-                const isPaid = order.payment?.status === 'paid';
-                const needsRegularization = !order.pricing;
-                const canRegisterPayment = !isPaid && !needsRegularization && posAvailable;
-                return (
-                  <tr key={orderId} className="border-t align-top">
-                    <td className="px-5 py-4"><p className="font-semibold text-blue-700">Bolsa {order.bagNumber || 'N/D'}</p><p className="max-w-40 truncate text-xs text-gray-500" title={String(orderId)}>{orderId}</p></td>
-                    <td className="px-5 py-4">{order.userName === 'N/A' ? 'No disponible' : order.userName}</td>
-                    <td className="px-5 py-4"><p>{order.numberOfClothes ?? order.numberOfItems} prendas · {order.weight ?? 'N/D'} kg</p><p className="text-xs text-gray-500">{orderStatusLabel(order.status)}</p></td>
-                    <td className="px-5 py-4">{order.pricing ? <><p className="font-bold">{formatMoney(order.pricing.total, order.pricing.currency)}</p><p className="text-xs text-gray-500">{formatMoney(order.pricing.pricePerKg, order.pricing.currency)}/kg</p></> : <span className="text-gray-500">No disponible</span>}</td>
-                    <td className="px-5 py-4"><p className={`font-semibold ${isPaid ? 'text-green-700' : 'text-amber-700'}`}>{order.payment?.statusLabel || 'Sin pagar'}</p><p className="text-xs text-gray-600">{order.payment?.methodLabel || 'Sin método'}</p>{order.payment?.evidenceAvailable && <PaymentEvidenceButton orderId={orderId} className="mt-2" />}</td>
-                    <td className="px-5 py-4 text-gray-600">{formatOrderDateEs(order)}<br />{formatOrderTimeEs(order)}</td>
-                    <td className="px-5 py-4"><div className="flex flex-col items-start gap-2">{onComplete && <button type="button" onClick={() => onComplete(order)} className="inline-flex min-h-10 items-center gap-1 rounded-lg bg-green-600 px-3 py-2 font-semibold text-white hover:bg-green-700"><CheckCircle className="h-4 w-4" />Completar servicio</button>}{!isPaid && <><button type="button" disabled={!canRegisterPayment} onClick={() => canRegisterPayment && onPayment(order)} className="inline-flex min-h-10 items-center gap-1 rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-gray-300"><CreditCard className="h-4 w-4" />Registrar pago</button>{needsRegularization && <span className="max-w-48 text-xs font-medium text-amber-700">Requiere regularización de precio antes del pago.</span>}</>}</div></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : <p className="p-5 text-gray-500">{empty}</p>}
-    </section>
-  );
+function OrderRow({ order, role, actorId, onDetail, onPayment, posAvailable }) {
+  const id = orderId(order);
+  return <tr className="border-t align-top"><td className="px-4 py-4"><p className="font-bold text-blue-800">Bolsa {order.bagNumber || 'N/D'}</p><p className="max-w-48 truncate text-xs text-gray-500" title={id}>{id}</p></td><td className="px-4 py-4"><p>{order.clientName || order.userName || 'No disponible'}</p><p className="text-xs text-gray-500">Hab. {order.roomNumber || 'N/D'} · {order.phoneNumber || 'Sin teléfono'}</p></td><td className="px-4 py-4"><p>{order.numberOfClothes ?? order.numberOfItems} prendas · {order.weight ?? 'N/D'} kg</p><p className="text-xs text-gray-500">{orderStatusLabel(order.status)}</p></td><td className="px-4 py-4">{order.assignedWorker?.email || order.assignedWorker?.id || 'Sin asignar'}</td><td className="px-4 py-4"><p className="font-semibold">{order.payment?.statusLabel || 'Sin pagar'}</p><p className="text-xs text-gray-500">{order.pricing ? formatMoney(order.pricing.total, order.pricing.currency) : 'Precio no disponible'}</p></td><td className="px-4 py-4">{formatOrderDateEs(order)}</td><td className="px-4 py-4"><div className="flex flex-wrap gap-2"><button type="button" onClick={() => onDetail(order)} className="min-h-10 rounded bg-blue-700 px-3 font-semibold text-white">Ver detalle</button>{canUsePos(order, role, actorId, posAvailable) && <button type="button" onClick={() => onPayment(order)} aria-label={`Registrar pago de la bolsa ${order.bagNumber || id}`} className="min-h-10 rounded border border-blue-700 px-3 text-blue-800"><CreditCard className="h-4 w-4" /></button>}</div></td></tr>;
 }

@@ -19,6 +19,8 @@ async function recordPosPayment(req, res, next) {
 
     const candidate = await Order.findById(req.params.orderId);
     if (!candidate) return res.status(404).json({ message: 'Pedido no encontrado' });
+    if (req.user.role === 'worker' && String(candidate.assignedWorker || '') !== String(req.user.userId))
+      return res.status(403).json({ message: 'Debes tener el pedido asignado para registrar el pago' });
     if (!hasValidPricing(candidate.pricing))
       return res.status(409).json({ message: 'El pedido no tiene un precio válido; regularízalo antes de registrar el pago' });
 
@@ -31,6 +33,7 @@ async function recordPosPayment(req, res, next) {
     const order = await Order.findOneAndUpdate(
       {
         _id: req.params.orderId,
+        ...(candidate.assignedWorker ? { assignedWorker: candidate.assignedWorker } : { $or: [{ assignedWorker: null }, { assignedWorker: { $exists: false } }] }),
         'payment.current.status': { $ne: 'paid' },
         'payment.status': { $ne: 'paid' },
         'pricing.currency': 'MXN',
