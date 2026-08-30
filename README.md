@@ -14,6 +14,7 @@ Plataforma web para administrar pedidos de lavandería, clientes, personal opera
 - [Roles y permisos](#roles-y-permisos)
 - [Módulos funcionales](#módulos-funcionales)
 - [Rutas del frontend](#rutas-del-frontend)
+- [Identidad visual SEO y GEO](#identidad-visual-seo-y-geo)
 - [API REST](#api-rest)
 - [Tiempo real con SocketIO](#tiempo-real-con-socketio)
 - [Modelo de datos](#modelo-de-datos)
@@ -36,6 +37,9 @@ Plataforma web para administrar pedidos de lavandería, clientes, personal opera
 ### Funcional y conectado de extremo a extremo
 
 - Landing pública en español con funciones, perfiles, flujo operativo, beneficios y estado real del producto.
+- Identidad visual propia de LaundryVibes en favicon, landing, accesos y paneles.
+- SEO técnico con canonical, Open Graph, Twitter Cards, sitemap, robots y datos estructurados.
+- GEO con `llms.txt` y una descripción citable que separa capacidades disponibles de la hoja de ruta.
 - Acceso compartido para clientes, trabajadores y administradores desde la landing y el selector de perfiles.
 - Registro e inicio de sesión de clientes.
 - Autenticación JWT Bearer y autorización por roles en el servidor.
@@ -54,13 +58,13 @@ Plataforma web para administrar pedidos de lavandería, clientes, personal opera
 
 ### Parcial o pendiente
 
-- Admin utiliza el login compartido y entra al panel operativo; no dispone de una pantalla de acceso exclusiva.
-- El backend admite el rol `admin`, pero no existe una consola administrativa dedicada.
+- Admin utiliza el login compartido, entra a `/admin/dashboard` y dispone de una sección protegida para crear accesos de trabajador.
+- Worker y admin comparten pedidos e inventario; sólo admin puede crear cuentas operativas. Todavía no existe gestión completa para listar, editar o desactivar usuarios.
 - El primer administrador no se crea mediante una ruta pública ni un seeder versionado.
 - Daily Rush es una pantalla informativa sin lógica de negocio.
 - El pago QR/UPI y la carga de comprobantes son maquetas visuales; no procesan pagos.
-- Los modales de nuevo pedido y generación de reporte del panel operativo son maquetas.
-- Los botones de sincronización, ajustes, envío de reporte y ordenación todavía no ejecutan acciones.
+- Los modales de nuevo pedido y generación de reporte del panel operativo siguen siendo maquetas: sus acciones finales no guardan ni descargan datos.
+- La navegación a inventario, configuración y administración ya funciona; la ordenación de pedidos y la descarga/envío real de reportes siguen pendientes.
 - Las reclamaciones se crean, pero no hay bandeja ni flujo de resolución.
 - SMTP y Twilio son opcionales; sin sus variables, correo y SMS permanecen deshabilitados.
 
@@ -152,7 +156,9 @@ flowchart LR
 | Completar pedidos | No | Sí | Sí |
 | Consultar y operar inventario | No | Sí | Sí |
 | Crear trabajadores | No | No | Sí |
-| Consola administrativa dedicada | No | No | Pendiente |
+| Configuración de sesión y cierre de sesión | Sí | Sí | Sí |
+| Alta de trabajadores desde la interfaz | No | No | Sí |
+| Gestión completa de usuarios | No | No | Pendiente |
 
 Los guards del frontend mejoran la navegación, pero no son una frontera de seguridad. La autorización real está en el backend mediante `authenticateUser` y `requireRoles(...)`.
 
@@ -289,10 +295,30 @@ Socket.IO no transporta pedidos completos. Emite una señal `orders:refresh` par
 | Ruta | Vista |
 |---|---|
 | `/workerdashboard` | Dashboard operacional |
+| `/worker/settings` | Cuenta y permisos del trabajador |
+| `/admin/dashboard` | Dashboard con identidad administrativa |
+| `/admin/settings` | Cuenta, permisos y alta de trabajadores |
 | `/worker/orders` | Gestión de pedidos |
 | `/stock` | Inventario |
 
-No existe todavía una ruta comodín 404 ni rutas administrativas exclusivas.
+La SPA incluye una vista comodín 404 y Nginx devuelve HTTP 404 para rutas desconocidas. Las rutas administrativas exclusivas se limitan al panel identificado y al alta de trabajadores; la gestión completa de cuentas sigue pendiente.
+
+## Identidad visual SEO y GEO
+
+La interfaz usa un componente de marca compartido y un símbolo original de LaundryVibes; no depende del antiguo recurso genérico con marca de agua. Los assets públicos incluyen favicon SVG/ICO/PNG, Apple Touch Icon, iconos PWA y una tarjeta social de 1200 × 630 px.
+
+La portada define:
+
+- Título y descripción orientados a software de gestión para lavanderías.
+- Canonical absoluto e idioma `es-MX`.
+- Open Graph y Twitter Cards con imagen propia.
+- JSON-LD para `Organization`, `WebSite` y `SoftwareApplication`.
+- `site.webmanifest`, `robots.txt` y `sitemap.xml`.
+- `llms.txt` con funciones, perfiles, flujo diario, límites y fuentes preferidas para asistentes de IA.
+
+Las rutas de login, registro, recuperación, selector y paneles cambian dinámicamente a `noindex, nofollow, noarchive` y no publican canonical. El sitemap contiene únicamente la landing pública.
+
+La aplicación continúa siendo una SPA renderizada en el cliente. Para maximizar el rastreo de agentes que no ejecutan JavaScript queda recomendado prerenderizar la landing o migrar la página comercial a SSR/SSG.
 
 ## API REST
 
@@ -535,12 +561,16 @@ laundry_buddy/
 ├── Frontend/
 │   ├── src/
 │   │   ├── Component/
+│   │   │   ├── Brand/           # Logo reutilizable
+│   │   │   ├── Landing/         # Página pública
+│   │   │   ├── SEO/             # Metadatos por ruta
 │   │   │   ├── User/            # Portal cliente
 │   │   │   ├── Worker/          # Operación e inventario
 │   │   │   └── ProtectedRoute.jsx
 │   │   ├── Context/             # OrderContext
 │   │   ├── App.jsx              # Router
 │   │   └── main.jsx             # Bootstrap y Axios
+│   ├── public/                   # Favicon, marca, manifest, sitemap y llms.txt
 │   ├── Dockerfile
 │   ├── docker-nginx.conf
 │   ├── vite.config.js

@@ -1,5 +1,5 @@
-import React from 'react';
 import { Link } from "react-router-dom";
+import BrandLogo from '../Brand/BrandLogo';
 
 const RoleSelector = () => {
   return (
@@ -8,6 +8,7 @@ const RoleSelector = () => {
       <div className="bg-softBlue h-screen overflow-y-auto">
         {/* Heading */}
         <div className="flex flex-col items-center pt-20 px-4">
+          <Link to="/" className="mb-8" aria-label="LaundryVibes, volver al inicio"><BrandLogo size={52} /></Link>
           <h1 className="font-bold text-3xl sm:text-5xl text-center">
             Bienvenido a LaundryVibes
           </h1>
@@ -55,7 +56,7 @@ const RoleSelector = () => {
             <div className="text-purple-500 text-3xl mb-4">🛡️</div>
             <h2 className="text-xl font-semibold mb-2">Continuar como administrador</h2>
             <p className="text-gray-600 mb-4">
-              Administra la configuración del sistema y los usuarios, y supervisa el rendimiento general
+              Supervisa pedidos e inventario y crea accesos protegidos para trabajadores
             </p>
             <Link
               to="/login"

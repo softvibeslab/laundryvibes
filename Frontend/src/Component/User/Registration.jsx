@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { RiTShirt2Line } from "react-icons/ri";
 import axios from "axios";
 import { apiMessageEs } from "../../utils/localization";
+import BrandLogo from "../Brand/BrandLogo";
 
 const Registration = () => {
 
@@ -73,9 +73,7 @@ const handleSubmit = async (e) =>{
       <div className="w-full max-w-lg p-6 bg-white rounded-lg shadow-md">
         {/* Icon and Heading */}
         <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <RiTShirt2Line className="w-10 h-10 text-blue-700" />
-          </div>
+          <Link to="/" className="mb-4" aria-label="LaundryVibes, volver al inicio"><BrandLogo size={52} /></Link>
           <h2 className="text-2xl font-bold text-gray-800 text-center">
             Crea tu cuenta
           </h2>

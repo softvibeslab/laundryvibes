@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { MdOutlineDashboard } from "react-icons/md";
 import { RiTShirt2Line } from "react-icons/ri";
 import { RiHistoryFill } from "react-icons/ri";
@@ -10,6 +10,7 @@ import { LogOut } from 'lucide-react'
 import { toast,ToastContainer } from "react-toastify"; 
 import 'react-toastify/dist/ReactToastify.css';
 import ToastCloseButton from '../ToastCloseButton';
+import BrandLogo from '../Brand/BrandLogo';
 
 
 function Sidebar() {
@@ -77,7 +78,7 @@ const navigate =useNavigate();
       >
         {/* Header */}
         <div className="p-6 px-8">
-          <h1 className="text-2xl font-bold text-black">LaundryVibes</h1>
+          <Link to="/user/userdashboard" aria-label="LaundryVibes, ir al panel"><BrandLogo size={38} /></Link>
         </div>
 
         {/* Menu */}

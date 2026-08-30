@@ -1,8 +1,11 @@
 const Worker = require("../../../models/Worker/workerModel");
+const User = require("../../../models/user");
 const bcrypt = require("bcryptjs");
+const { normalizeEmail, isValidEmail, isValidPassword } = require("../../../utils/credentials");
 
 const createWorker = async (req, res, next) => {
-  const { email, password } = req.body;
+  const email = normalizeEmail(req.body.email);
+  const password = String(req.body.password || '');
 
   if (!email || !password) {
     return res
@@ -10,15 +13,26 @@ const createWorker = async (req, res, next) => {
       .json({ message: "El correo electrónico y la contraseña son obligatorios." });
   }
 
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ message: "Ingresa un correo electrónico válido." });
+  }
+
+  if (!isValidPassword(password)) {
+    return res.status(400).json({ message: "La contraseña debe tener al menos 8 caracteres." });
+  }
+
   try {
-    const existingWorker = await Worker.findOne({ email });
-    if (existingWorker) {
+    const [existingWorker, existingUser] = await Promise.all([
+      Worker.findOne({ email }),
+      User.findOne({ email }),
+    ]);
+    if (existingWorker || existingUser) {
       return res
         .status(400)
-        .json({ message: "Ya existe un trabajador con este correo electrónico." });
+        .json({ message: "Ya existe una cuenta con este correo electrónico." });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     const newWorker = new Worker({
       email,

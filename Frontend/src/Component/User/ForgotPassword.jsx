@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import axios from "axios"
 import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
-import icon from '../../assets/forgotpassword.png'
 import { apiMessageEs } from '../../utils/localization';
 import ToastCloseButton from '../ToastCloseButton';
+import BrandLogo from '../Brand/BrandLogo';
 
 function ResetPassword() {
   const [email, setEmail] = useState('');
@@ -30,9 +30,8 @@ const handleForgotPassword = async(e)=>{
     <ToastContainer aria-label="Notificaciones" closeButton={ToastCloseButton} />
     <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
       <div className="w-full max-w-sm sm:max-w-md bg-white p-6 rounded-lg shadow-lg">
-        {/* Icon */}
         <div className="flex justify-center mb-4">
-          < img src={icon} className="h-12 w-12" />
+          <BrandLogo size={48} />
         </div>
 
         {/* Title */}

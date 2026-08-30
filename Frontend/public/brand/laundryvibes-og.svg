@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">LaundryVibes</title>
+  <desc id="desc">Pedidos, operación e inventario en un solo flujo</desc>
+  <defs>
+    <linearGradient id="bg" x1="62" y1="40" x2="1138" y2="590" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FBFF"/>
+      <stop offset="1" stop-color="#E7F3FF"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#287AF0"/>
+      <stop offset="1" stop-color="#0E4FB9"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1090" cy="66" r="230" fill="#D7E9FF" opacity=".55"/>
+  <circle cx="1050" cy="600" r="310" fill="#DDF7F3" opacity=".7"/>
+  <path d="M0 542c171-71 304-70 445 2s291 72 451-3 249-60 304-21v110H0V542Z" fill="#1768E5" opacity=".06"/>
+  <g transform="translate(94 88)">
+    <rect width="128" height="128" rx="36" fill="url(#brand)"/>
+    <rect x="29" y="25" width="70" height="83" rx="11" fill="#fff"/>
+    <path d="M29 43h70" stroke="#BFD8FA" stroke-width="5"/>
+    <circle cx="41" cy="34" r="4" fill="#1768E5"/>
+    <circle cx="53" cy="34" r="4" fill="#15A88A"/>
+    <circle cx="64" cy="75" r="26" fill="#EAF3FF" stroke="#153F72" stroke-width="6"/>
+    <path d="M40 78c9-7 16-7 24 0s16 7 25 0" fill="none" stroke="#27A9D4" stroke-width="7" stroke-linecap="round"/>
+    <path d="m108 14 3 8 8 3-8 3-3 8-3-8-8-3 8-3 3-8Z" fill="#9DE7EF"/>
+  </g>
+  <text x="248" y="170" fill="#10213F" font-family="Arial, Helvetica, sans-serif" font-size="63" font-weight="800" letter-spacing="-3">Laundry<tspan fill="#1768E5">Vibes</tspan></text>
+  <text x="94" y="326" fill="#10213F" font-family="Arial, Helvetica, sans-serif" font-size="65" font-weight="800" letter-spacing="-2">Tu lavandería, organizada</text>
+  <text x="94" y="402" fill="#10213F" font-family="Arial, Helvetica, sans-serif" font-size="65" font-weight="800" letter-spacing="-2">de principio a fin.</text>
+  <text x="98" y="476" fill="#52637B" font-family="Arial, Helvetica, sans-serif" font-size="28">Pedidos, clientes, operación e inventario en un solo lugar.</text>
+  <g transform="translate(98 526)">
+    <rect width="294" height="48" rx="24" fill="#1768E5"/>
+    <text x="147" y="31" text-anchor="middle" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700">laundryvibes.rovicrm.com</text>
+  </g>
+</svg>
