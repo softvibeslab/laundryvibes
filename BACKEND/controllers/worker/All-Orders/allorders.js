@@ -1,11 +1,14 @@
 const Order = require('../../../models/userOrder');
+const { financialDto } = require('../../../utils/orderDto');
 
 function orderDto(order) {
   const user = order.userId || {};
   return {
-    OrderId: order._id, userName: user.name || 'N/A', phoneNumber: user.phoneNumber,
-    bagNumber: user.bagNumber, numberOfItems: order.numberOfClothes, status: order.status,
+    id: String(order._id), OrderId: order._id, userName: user.name || 'N/A', phoneNumber: user.phoneNumber,
+    bagNumber: user.bagNumber, numberOfItems: order.numberOfClothes,
+    numberOfClothes: order.numberOfClothes, weight: order.weight, status: order.status,
     createdAt: order.createdAt,
+    ...financialDto(order),
     date: new Date(order.createdAt).toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' }),
     time: new Date(order.createdAt).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }),
   };

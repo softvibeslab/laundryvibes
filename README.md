@@ -62,7 +62,7 @@ Plataforma web para administrar pedidos de lavandería, clientes, personal opera
 - Worker y admin comparten pedidos e inventario; sólo admin puede crear cuentas operativas. Todavía no existe gestión completa para listar, editar o desactivar usuarios.
 - El primer administrador no se crea mediante una ruta pública ni un seeder versionado.
 - Daily Rush es una pantalla informativa sin lógica de negocio.
-- El pago QR/UPI y la carga de comprobantes son maquetas visuales; no procesan pagos.
+- Los pagos son registros manuales tipo POS; LaundryVibes no procesa dinero. Efectivo, transferencia y tarjeta se configuran por administración, con evidencia para transferencia/tarjeta.
 - Los modales de nuevo pedido y generación de reporte del panel operativo siguen siendo maquetas: sus acciones finales no guardan ni descargan datos.
 - La navegación a inventario, configuración y administración ya funciona; la ordenación de pedidos y la descarga/envío real de reportes siguen pendientes.
 - Las reclamaciones se crean, pero no hay bandeja ni flujo de resolución.
@@ -360,19 +360,32 @@ Authorization: Bearer TOKEN_JWT
 
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
-| POST | `/api/user/submit-order` | `user` | Crear pedido propio |
-| GET | `/api/user/order-history` | `user` | Consultar historial propio |
-| GET | `/api/worker/getallorderdetails` | `worker`, `admin` | Consultar todos los pedidos |
+| POST | `/api/user/submit-order` | `user` | Crear pedido y declaración de pago (`multipart/form-data`) |
+| GET | `/api/user/order-history` | `user` | Consultar historial propio con snapshot financiero |
+| GET | `/api/worker/getallorderdetails` | `worker`, `admin` | Consultar todos los pedidos y estados de pago |
 | PATCH | `/api/worker/update-order-status/:orderId` | `worker`, `admin` | Marcar pedido como completado |
+| PATCH | `/api/worker/orders/:orderId/payment` | `worker`, `admin` | Registrar pago manual POS (`multipart/form-data`) |
 
-Body mínimo para crear pedido:
+Campos para crear pedido:
 
-```json
-{
-  "numberOfClothes": 8,
-  "weight": 3.5
-}
+```text
+numberOfClothes=8
+weight=3.5
+paymentMethod=cash|transfer|card
+evidence=<JPG|PNG|WebP|PDF, máximo 2 MiB; obligatorio para transfer/card>
 ```
+
+El backend calcula y conserva `pricePerKg`, `currency` y `total`; ignora cualquier total enviado por el navegador.
+
+### Pagos y moneda
+
+| Método | Ruta | Rol | Descripción |
+|---|---|---|---|
+| GET | `/api/payments/config` | `user`, `worker`, `admin` | Configuración efectiva y métodos activos |
+| PUT | `/api/admin/payment-config` | `admin` | Editar tarifa MXN y activar/desactivar métodos manuales |
+| GET | `/api/payments/orders/:orderId/evidence` | Propietario, `worker`, `admin` | Consultar evidencia protegida; acepta `?source=client|pos` |
+
+LaundryVibes registra pagos manuales, pero no mueve dinero ni almacena PAN, CVV o vencimiento de tarjetas. PayPal, Mercado Pago y Stripe son indicadores no accionables de funciones futuras.
 
 ### Reclamaciones
 
@@ -1008,15 +1021,13 @@ Advertencia: la herramienta `login` devuelve el JWT al cliente MCP y `submit_ord
 
 ### Producto y UX
 
-- Admin utiliza el acceso compartido y carece de una consola dedicada.
-- Worker/admin no tienen botón de logout.
-- El logout de usuario no limpia todas las claves de `localStorage`.
-- No hay pantalla 404.
+- Admin comparte el login operativo, pero cuenta con panel identificado y configuración protegida; la gestión completa de trabajadores sigue pendiente.
+- Worker y admin tienen cierre de sesión visible y configuración por rol.
+- El logout del cliente todavía conserva algunas claves secundarias de `localStorage`.
 - Daily Rush no está implementado.
-- Pago QR/UPI y comprobante no están integrados.
-- El precio se calcula sólo en cliente; no es una cotización autoritativa.
-- El contexto de pedido es volátil y se pierde al recargar.
-- Algunos datos dependen del orden previo de navegación.
+- PayPal, Mercado Pago y Stripe se muestran como integraciones futuras y no ejecutan cobros.
+- El backend calcula y conserva el precio autoritativo en MXN; no hay conversión de moneda, impuestos ni reembolsos.
+- La confirmación inmediata usa contexto volátil, pero el pedido persistido puede recuperarse desde el historial.
 - No existe un framework de i18n ni selector de idioma; la interfaz y los mensajes visibles están localizados en español, mientras los valores canónicos del API permanecen estables en inglés.
 - El bundle no usa lazy loading por ruta.
 

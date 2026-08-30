@@ -1,245 +1,151 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { CheckCircle, ArrowUpDown, Download, Search } from 'lucide-react';
+import { ArrowUpDown, CheckCircle, CreditCard, Download, Search } from 'lucide-react';
+import { io } from 'socket.io-client';
 import Navbar from '../Navbar/Navbar';
 import LoaderM from '../../../assets/loader/loader';
 import NotifyAndComplete from './NotifyAndComplete';
-import { formatOrderDateEs, formatOrderTimeEs, orderStatusLabel } from '../../../utils/localization';
+import PosPaymentModal from './PosPaymentModal';
+import PaymentEvidenceButton from '../../PaymentEvidenceButton';
+import { apiMessageEs, formatOrderDateEs, formatOrderTimeEs, orderStatusLabel } from '../../../utils/localization';
+import { formatMoney, getPaymentConfig } from '../../../utils/payments';
 
-import { io } from 'socket.io-client';
-
-function OrderManagement() {
-  const [searchQuery, setSearchQuery] = useState("");
+export default function OrderManagement() {
+  const [searchQuery, setSearchQuery] = useState('');
   const [orders, setOrders] = useState([]);
-
+  const [methods, setMethods] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isModelOpen,setIsModelOpen]=useState(false);
-  const [selectedOrder,setSelectedOrder]=useState(null)
+  const [ordersError, setOrdersError] = useState('');
+  const [configLoading, setConfigLoading] = useState(true);
+  const [configError, setConfigError] = useState('');
+  const [completionOrder, setCompletionOrder] = useState(null);
+  const [paymentOrder, setPaymentOrder] = useState(null);
+  const [newestFirst, setNewestFirst] = useState(true);
 
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
-      const response = await axios.get('/api/worker/getallorderdetails');
-      const { orders } = response.data;
-
-      console.log("Response",response.data.orders)
-
-      setOrders(orders || []);
-
-      setLoading(false);
-      console.log("Orders",response)
-    } catch (error) {
-      console.error("No se pudieron obtener los pedidos:", error);
+      const { data } = await axios.get('/api/worker/getallorderdetails');
+      setOrders(data.orders || []);
+      setOrdersError('');
+    } catch (requestError) {
+      setOrdersError(apiMessageEs(requestError.response?.data?.message, 'No se pudieron cargar los pedidos.'));
+    } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(()=>{
+  const fetchPaymentConfig = useCallback(async () => {
+    setConfigLoading(true);
+    setConfigError('');
+    try {
+      const config = await getPaymentConfig();
+      setMethods(config.methods || []);
+    } catch (requestError) {
+      setMethods([]);
+      setConfigError(apiMessageEs(requestError.response?.data?.message, 'No se pudieron cargar los métodos de pago.'));
+    } finally {
+      setConfigLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
     fetchOrders();
-  },[])
+    fetchPaymentConfig();
+  }, [fetchOrders, fetchPaymentConfig]);
 
-      // Handling socket.io connection 
-      useEffect(() => {
-        const socketConnection = io({ auth: { token: localStorage.getItem('token') } });
+  useEffect(() => {
+    const socket = io({ auth: { token: localStorage.getItem('token') } });
+    socket.on('orders:refresh', fetchOrders);
+    return () => socket.disconnect();
+  }, [fetchOrders]);
 
-    
-        socketConnection.on('connect', () => {
-          console.log('Connected to server');
-        });
-    
-        socketConnection.on('orders:refresh', () => {
-          fetchOrders()
-        });
-    
-        socketConnection.on('disconnect', () => {
-          console.log('Disconnected from server');
-        });
-    
-        return () => {
-          socketConnection.disconnect();
-        };
-      }, []);
-  
+  const filteredOrders = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const matches = orders.filter((order) => !query || String(order.bagNumber || '').toLowerCase().includes(query) || String(order.id || order.OrderId || '').toLowerCase().includes(query));
+    return [...matches].sort((a, b) => {
+      const difference = new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      return newestFirst ? difference : -difference;
+    });
+  }, [newestFirst, orders, searchQuery]);
 
-
-
-  // Filter orders according to bag number
-  const filterOrders = orders.filter(order =>
-    order?.bagNumber?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filterPendingOrders = filterOrders.filter(order => order.status === "Pending");
-  const filterCompletedOrders = filterOrders.filter(order => order.status === "Completed");
-
-  if (loading) {
-    return  <div className="fixed inset-0 flex items-center justify-center bg-gray-100 ">     
-                        <LoaderM />
-               </div>;
-  }
-
-
-
+  if (loading) return <div className="fixed inset-0 flex items-center justify-center bg-gray-100"><LoaderM /></div>;
 
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-        <div className="max-w-7xl mx-auto pt-12">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <h1 className="text-2xl font-bold text-gray-900">Gestión de pedidos</h1>
-            <div className="flex items-center gap-4 w-full sm:w-auto">
-              <div className="relative flex-1 sm:flex-initial">
-                <input
-                  type="text"
-                  placeholder="Buscar por número de bolsa..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              </div>
-              <button className="flex items-center text-gray-600 bg-white border border-gray-200 rounded-md px-3 py-1.5 whitespace-nowrap hover:bg-gray-50">
-                <ArrowUpDown className="h-4 w-4 mr-2" />
-                <span>Más recientes primero</span>
-              </button>
+      <main className="min-h-screen bg-gray-50 p-4 pt-24 md:p-8 md:pt-24">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+            <div><h1 className="text-2xl font-bold text-gray-900">Gestión de pedidos</h1><p className="text-gray-600">Servicio y pago son acciones separadas.</p></div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <label className="relative block">
+                <span className="sr-only">Buscar pedido</span>
+                <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" aria-hidden="true" />
+                <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Bolsa o identificador…" className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 sm:w-72" />
+              </label>
+              <button type="button" onClick={() => setNewestFirst((value) => !value)} className="flex min-h-11 items-center justify-center gap-2 rounded-lg border bg-white px-3 text-gray-700"><ArrowUpDown className="h-4 w-4" />{newestFirst ? 'Más recientes' : 'Más antiguos'}</button>
             </div>
           </div>
+          {ordersError && <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-red-800">{ordersError} <button type="button" onClick={fetchOrders} className="ml-2 font-bold underline">Reintentar</button></div>}
+          {configLoading && <div role="status" className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-900">Cargando métodos de pago…</div>}
+          {configError && <div role="alert" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">{configError} No se puede abrir el POS. <button type="button" onClick={fetchPaymentConfig} className="ml-2 font-bold underline">Reintentar</button></div>}
 
-          {/* Pedidos pendientes Section */}
-          <div className="bg-white rounded-lg mt-6 shadow-sm mb-8 overflow-hidden">
-            {/* Section Header */}
-            <div className="p-4 md:p-6 border-b border-gray-100">
-              <div className="flex items-center">
-                <div className="h-6 w-6 rounded-full bg-yellow-100 flex items-center justify-center mr-3">
-                  <Download className="h-5 w-5 rounded-full text-yellow-400" />
-                </div>
-                <h2 className="text-lg font-semibold">Pedidos pendientes</h2>
-                <span className="ml-2 bg-gray-100 text-gray-600 text-sm px-2 py-0.5 rounded-md">
-                  {filterPendingOrders.length}
-                </span>
-              </div>
-            </div>
-
-            {/* Table Header */}
-            <div className="overflow-x-auto max-h-80">
-              {filterPendingOrders.length > 0 ? (
-                <table className="w-full">
-                  <thead className="sticky top-0 bg-white shadow">
-                    <tr className="text-left text-gray-500 text-sm border-b border-gray-100">
-                      <th className="px-6 py-3 font-medium">Número de bolsa</th>
-                      <th className="px-6 py-3 font-medium">Cliente</th>
-                      <th className="px-6 py-3 font-medium">Número de prendas</th>
-                      <th className="px-6 py-3 font-medium">Estado</th>
-                      <th className="px-6 py-3 font-medium">Fecha</th>
-                      <th className="px-6 py-3 font-medium">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filterPendingOrders.map((order) => (
-                      <tr key={order.bagNumber} className="border-b border-gray-100">
-                        <td className="px-6 py-4 text-blue-600 font-medium">{`Bolsa n.º ${order.bagNumber}`}</td>
-                        <td className="px-6 py-4">{order.userName === 'N/A' ? 'No disponible' : order.userName}</td>
-                        <td className="px-6 py-4">{order.numberOfItems}</td>
-                        <td className="px-6 py-4">
-                          <span className="bg-yellow-100 text-yellow-800 text-xs px-2 font-bold py-1 rounded-full">
-                            {orderStatusLabel(order.status)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-gray-500">{formatOrderDateEs(order)}<br />{formatOrderTimeEs(order)}</td>
-                        <td className="px-6 py-4">
-                          <button
-                          onClick={()=>{
-                            setSelectedOrder(order);
-                            setIsModelOpen(true);
-                          }} 
-                          
-                          
-                          className="bg-green-500 hover:bg-green-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center">
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Completar
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p className="p-4">No se encontraron pedidos pendientes.</p>
-              )}
-            </div>
-          </div>
-
-          <NotifyAndComplete
-          isOpen={isModelOpen}
-          onClose={()=> setIsModelOpen(false)}
-          order={selectedOrder}
-          fetchOrders={fetchOrders} //pass the function to notification and complete component
+          <OrderSection
+            title="Pedidos pendientes"
+            icon={<Download className="h-5 w-5 text-yellow-600" />}
+            orders={filteredOrders.filter((order) => order.status === 'Pending')}
+            empty="No se encontraron pedidos pendientes."
+            onComplete={setCompletionOrder}
+            onPayment={setPaymentOrder}
+            posAvailable={!configLoading && !configError && methods.some((method) => method.enabled)}
           />
+          <OrderSection
+            title="Pedidos completados"
+            icon={<CheckCircle className="h-5 w-5 text-green-600" />}
+            orders={filteredOrders.filter((order) => order.status === 'Completed')}
+            empty="No se encontraron pedidos completados."
+            onPayment={setPaymentOrder}
+            posAvailable={!configLoading && !configError && methods.some((method) => method.enabled)}
+          />
+        </div>
+      </main>
 
-          {/* Pedidos completados Section */}
-          <div className="bg-white rounded-lg shadow-sm mb-8 overflow-hidden">
-            {/* Section Header */}
-            <div className="p-4 md:p-6 border-b border-gray-100">
-              <div className="flex items-center">
-                <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center mr-3">
-                  <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                </div>
-                <h2 className="text-lg font-semibold">Pedidos completados</h2>
-                <span className="ml-2 bg-gray-100 text-gray-600 text-sm px-2 py-0.5 rounded-md">
-                  {filterCompletedOrders.length}
-                </span>
-              </div>
-            </div>
+      <NotifyAndComplete isOpen={Boolean(completionOrder)} onClose={() => setCompletionOrder(null)} order={completionOrder} fetchOrders={fetchOrders} />
+      {paymentOrder && <PosPaymentModal order={paymentOrder} methods={methods} onClose={() => setPaymentOrder(null)} onSaved={fetchOrders} />}
+    </>
+  );
+}
 
-            {/* Table Header */}
-            <div className="overflow-x-auto max-h-80">
-              {filterCompletedOrders.length > 0 ? (
-                <table className="w-full">
-                  <thead className="sticky top-0 bg-white shadow">
-                    <tr className="text-left text-gray-500 text-sm border-b border-gray-100">
-                      <th className="px-6 py-3 font-medium">Número de bolsa</th>
-                      <th className="px-6 py-3 font-medium">Cliente</th>
-                      <th className="px-6 py-3 font-medium">Número de prendas</th>
-                      <th className="px-6 py-3 font-medium">Fecha</th>
-                      <th className="px-6 py-3 font-medium">Hora</th>
-                      <th className="px-6 py-3 font-medium">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filterCompletedOrders.map((order, index) => (
-                      <tr key={index} className="border-b border-gray-100">
-                        <td className="px-6 py-4 text-blue-600 font-medium">{order.bagNumber}</td>
-                        <td className="px-6 py-4">{order.userName === 'N/A' ? 'No disponible' : order.userName}</td>
-                        <td className="px-6 py-4">{order.numberOfItems}</td>
-                        <td className="px-6 py-4 text-gray-500">{formatOrderDateEs(order)}</td>
-                        <td className="px-6 py-4 text-gray-500">{formatOrderTimeEs(order)}</td>
-                        <td className="px-6 py-4">
-                          <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full">
-                            {orderStatusLabel(order.status)}
-                          </span>
-                        </td>
-                        {/* <td className="px-6 py-4">
-                          <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center">
-                            <Bell className="h-4 w-4 mr-1" />
-                            Notify
-                          </button>
-                        </td> */}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                            ) : (
-                              <p className="p-4">No se encontraron pedidos completados.</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
+function OrderSection({ title, icon, orders, empty, onComplete, onPayment, posAvailable }) {
+  return (
+    <section className="mt-6 overflow-hidden rounded-xl bg-white shadow-sm">
+      <header className="flex items-center gap-3 border-b p-5">{icon}<h2 className="text-lg font-bold">{title}</h2><span className="rounded-full bg-gray-100 px-2 py-0.5 text-sm">{orders.length}</span></header>
+      {orders.length ? (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[980px] text-left text-sm">
+            <thead className="bg-gray-50 text-gray-600"><tr><th className="px-5 py-3">Pedido</th><th className="px-5 py-3">Cliente</th><th className="px-5 py-3">Servicio</th><th className="px-5 py-3">Precio</th><th className="px-5 py-3">Pago</th><th className="px-5 py-3">Fecha</th><th className="px-5 py-3">Acciones</th></tr></thead>
+            <tbody>
+              {orders.map((order) => {
+                const orderId = order.id || order.OrderId;
+                const isPaid = order.payment?.status === 'paid';
+                const needsRegularization = !order.pricing;
+                const canRegisterPayment = !isPaid && !needsRegularization && posAvailable;
+                return (
+                  <tr key={orderId} className="border-t align-top">
+                    <td className="px-5 py-4"><p className="font-semibold text-blue-700">Bolsa {order.bagNumber || 'N/D'}</p><p className="max-w-40 truncate text-xs text-gray-500" title={String(orderId)}>{orderId}</p></td>
+                    <td className="px-5 py-4">{order.userName === 'N/A' ? 'No disponible' : order.userName}</td>
+                    <td className="px-5 py-4"><p>{order.numberOfClothes ?? order.numberOfItems} prendas · {order.weight ?? 'N/D'} kg</p><p className="text-xs text-gray-500">{orderStatusLabel(order.status)}</p></td>
+                    <td className="px-5 py-4">{order.pricing ? <><p className="font-bold">{formatMoney(order.pricing.total, order.pricing.currency)}</p><p className="text-xs text-gray-500">{formatMoney(order.pricing.pricePerKg, order.pricing.currency)}/kg</p></> : <span className="text-gray-500">No disponible</span>}</td>
+                    <td className="px-5 py-4"><p className={`font-semibold ${isPaid ? 'text-green-700' : 'text-amber-700'}`}>{order.payment?.statusLabel || 'Sin pagar'}</p><p className="text-xs text-gray-600">{order.payment?.methodLabel || 'Sin método'}</p>{order.payment?.evidenceAvailable && <PaymentEvidenceButton orderId={orderId} className="mt-2" />}</td>
+                    <td className="px-5 py-4 text-gray-600">{formatOrderDateEs(order)}<br />{formatOrderTimeEs(order)}</td>
+                    <td className="px-5 py-4"><div className="flex flex-col items-start gap-2">{onComplete && <button type="button" onClick={() => onComplete(order)} className="inline-flex min-h-10 items-center gap-1 rounded-lg bg-green-600 px-3 py-2 font-semibold text-white hover:bg-green-700"><CheckCircle className="h-4 w-4" />Completar servicio</button>}{!isPaid && <><button type="button" disabled={!canRegisterPayment} onClick={() => canRegisterPayment && onPayment(order)} className="inline-flex min-h-10 items-center gap-1 rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-gray-300"><CreditCard className="h-4 w-4" />Registrar pago</button>{needsRegularization && <span className="max-w-48 text-xs font-medium text-amber-700">Requiere regularización de precio antes del pago.</span>}</>}</div></td>
+                  </tr>
                 );
-              }
-              
-              export default OrderManagement;
-
-
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : <p className="p-5 text-gray-500">{empty}</p>}
+    </section>
+  );
+}

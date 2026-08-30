@@ -9,6 +9,8 @@ const workerAccountRoutes = require('./routes/Admin/WorkerControlle/workeraccoun
 const profileRoutes = require('./routes/userRoutes/Profile/userDetails');
 const workerOrderRoutes = require('./routes/Worker/Get-All-Orders/allOrders');
 const stockRoutes = require('./routes/Worker/stockRoutes');
+const paymentRoutes = require('./routes/payment/paymentRoutes');
+const adminPaymentRoutes = require('./routes/payment/adminPaymentRoutes');
 const { notFound, errorHandler } = require('./middleware/errors');
 
 function createApp(config) {
@@ -34,7 +36,9 @@ function createApp(config) {
     res.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'unavailable' });
   });
   app.use('/api/user', orderRoutes, userRoutes, complaintRoutes, profileRoutes);
+  app.use('/api/payments', paymentRoutes);
   app.use('/api/admin', workerAccountRoutes);
+  app.use('/api/admin', adminPaymentRoutes);
   app.use('/api/worker', workerAccountRoutes, workerOrderRoutes);
   app.use('/api/stock', stockRoutes);
   app.use(notFound);
