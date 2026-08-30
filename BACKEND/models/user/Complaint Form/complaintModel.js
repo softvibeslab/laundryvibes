@@ -8,8 +8,9 @@ const complaintSchema = new Schema(
       required: true, // The user who is submitting the complaint
     },
     bagNumber: {
-      type: Number,
+      type: String,
       required: true,
+      trim: true,
     },
     date: {
       type: Date,
