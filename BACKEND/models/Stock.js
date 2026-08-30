@@ -1,4 +1,8 @@
 const { Schema, model } = require('mongoose');
+const { isStockQuantity } = require('../utils/stockValidation');
+
+const normalizeStockIdentity = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+const finiteQuantity = (value) => isStockQuantity(value);
 
 const stockSchema = new Schema(
   {
@@ -8,11 +12,13 @@ const stockSchema = new Schema(
       enum: ['Detergent', 'Fabric Softener', 'Soap', 'Bleach', 'Starch'],
       trim: true,
     },
+    itemKey: { type: String, trim: true, lowercase: true },
     currentQuantity: {
       type: Number,
       required: true,
       default: 0,
       min: 0,
+      validate: { validator: finiteQuantity, message: 'Quantity must be finite, within limits and have at most 3 decimals' },
     },
     unit: {
       type: String,
@@ -24,6 +30,7 @@ const stockSchema = new Schema(
       required: true,
       default: 10,
       min: 0,
+      validate: { validator: finiteQuantity, message: 'Reorder level must be finite, within limits and have at most 3 decimals' },
     },
     lastRestockDate: {
       type: Date,
@@ -100,6 +107,15 @@ const stockSchema = new Schema(
   { timestamps: true }
 );
 
+stockSchema.index(
+  { itemKey: 1 },
+  { unique: true, partialFilterExpression: { itemKey: { $type: 'string' } }, name: 'stock_item_key_unique' },
+);
+
+stockSchema.pre('validate', function setNormalizedIdentity() {
+  this.itemKey = normalizeStockIdentity(this.itemName);
+});
+
 stockSchema.pre('save', function (next) {
   if (this.consumptionHistory.length > 0) {
     const totalConsumption = this.consumptionHistory.reduce(
@@ -133,4 +149,7 @@ stockSchema.pre('save', function (next) {
   next();
 });
 
-module.exports = model('Stock', stockSchema);
+const Stock = model('Stock', stockSchema);
+Stock.normalizeStockIdentity = normalizeStockIdentity;
+Stock.finiteQuantity = finiteQuantity;
+module.exports = Stock;

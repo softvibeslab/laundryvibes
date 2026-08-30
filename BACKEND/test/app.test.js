@@ -12,7 +12,7 @@ const { normalizeEmail, isValidEmail, isValidPassword } = require('../utils/cred
 const { errorHandler } = require('../middleware/errors');
 
 const env = { NODE_ENV: 'test', MONGODB_URL: 'mongodb://mongo/test', JWT_SECRET: 'test-secret-at-least-thirty-two-characters', FRONTEND_URL: 'https://app.example.com', CORS_ORIGINS: 'https://app.example.com' };
-const config = loadConfig(env);
+const config = { ...loadConfig(env), accountLookup: async (claims) => ({ role: claims.role, active: true, tokenVersion: claims.tokenVersion || 0 }), transactionRunner: async (work) => work({ id: 'test-session' }) };
 const app = createApp(config);
 
 const token = (role) => jwt.sign({ userId: '507f1f77bcf86cd799439011', role }, config.jwtSecret);

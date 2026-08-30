@@ -1,25 +1,32 @@
 const Stock = require('../../models/Stock');
+const { Types } = require('mongoose');
+const { parseStockQuantity } = require('../../utils/stockValidation');
+const { auditHttp } = require('../../services/auditService');
+const { runInTransaction } = require('../../services/transactionService');
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const stockIdentityFilter = (itemName) => {
+  const itemKey = Stock.normalizeStockIdentity(itemName);
+  const flexibleName = itemKey.split(' ').map(escapeRegex).join('\\s+');
+  return { $or: [{ itemKey }, { itemName: new RegExp(`^\\s*${flexibleName}\\s*$`, 'i') }] };
+};
+const atomic = (req, work) => runInTransaction(work, {
+  transactionRunner: req.app?.locals?.config?.transactionRunner,
+});
+
+const statusExpression = () => ({
+  $switch: {
+    branches: [
+      { case: { $lte: ['$currentQuantity', '$reorderLevel'] }, then: 'Low' },
+      { case: { $lte: ['$currentQuantity', { $multiply: ['$reorderLevel', 2] }] }, then: 'Medium' },
+    ],
+    default: 'High',
+  },
+});
 
 const getAllStock = async (req, res) => {
   try {
     const stockItems = await Stock.find().sort({ updatedAt: -1 });
-    
-    if (!stockItems || stockItems.length === 0) {
-      const defaultItems = [
-        { itemName: 'Detergent', currentQuantity: 50, unit: 'Liters', reorderLevel: 10 },
-        { itemName: 'Fabric Softener', currentQuantity: 30, unit: 'Liters', reorderLevel: 8 },
-        { itemName: 'Soap', currentQuantity: 40, unit: 'Kg', reorderLevel: 10 },
-        { itemName: 'Bleach', currentQuantity: 20, unit: 'Liters', reorderLevel: 5 },
-        { itemName: 'Starch', currentQuantity: 25, unit: 'Kg', reorderLevel: 5 },
-      ];
-
-      const createdItems = await Stock.insertMany(defaultItems);
-      return res.status(201).json({
-        message: 'Artículos iniciales del inventario creados',
-        data: createdItems,
-      });
-    }
-
     res.status(200).json({
       message: 'Artículos del inventario obtenidos correctamente',
       data: stockItems,
@@ -51,212 +58,188 @@ const getStockById = async (req, res) => {
   }
 };
 
-const createStockItem = async (req, res) => {
+const createStockItem = async (req, res, next) => {
   try {
-    const { itemName, currentQuantity, unit, reorderLevel, notes } = req.body;
-
-    if (!itemName || currentQuantity === undefined) {
-      return res.status(400).json({
-        message: 'El nombre del artículo y la cantidad actual son obligatorios',
-      });
+    const { itemName, unit, notes } = req.body;
+    const currentQuantity = parseStockQuantity(req.body.currentQuantity, { allowZero: true });
+    const reorderLevel = req.body.reorderLevel === undefined ? 10 : parseStockQuantity(req.body.reorderLevel, { allowZero: true });
+    if (!itemName || currentQuantity === null || reorderLevel === null) {
+      return res.status(400).json({ message: 'El nombre y cantidades finitas (máximo 3 decimales) son obligatorios' });
     }
-
-    const existingItem = await Stock.findOne({ itemName });
-    if (existingItem) {
-      return res.status(400).json({
-        message: 'El artículo del inventario ya existe',
-      });
-    }
-
-    const newStock = new Stock({
-      itemName,
-      currentQuantity,
-      unit: unit || 'Liters',
-      reorderLevel: reorderLevel || 10,
-      notes,
+    const itemKey = Stock.normalizeStockIdentity(itemName);
+    if (await Stock.exists(stockIdentityFilter(itemName))) return res.status(409).json({ message: 'El artículo del inventario ya existe' });
+    const newStock = await atomic(req, async (session) => {
+      const result = await Stock.create([{ itemName, itemKey, currentQuantity, unit: unit || 'Liters', reorderLevel, notes }], { session });
+      const created = Array.isArray(result) ? result[0] : result;
+      await auditHttp(req, 'inventory.item_created', { type: 'stock', id: String(created._id) }, { itemKey, currentQuantity }, { session });
+      return created;
     });
-
-    await newStock.save();
-
-    res.status(201).json({
-      message: 'Artículo del inventario creado correctamente',
-      data: newStock,
-    });
+    return res.status(201).json({ message: 'Artículo del inventario creado correctamente', data: newStock });
   } catch (error) {
-    res.status(500).json({
-      message: 'Error al crear el artículo del inventario',
-    });
+    if (error?.code === 11000) return res.status(409).json({ message: 'El artículo del inventario ya existe' });
+    return next(error);
   }
 };
 
 
-const addStock = async (req, res) => {
+const addStock = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { quantityToAdd, notes } = req.body;
-
-    if (!quantityToAdd || quantityToAdd <= 0) {
-      return res.status(400).json({
-        message: 'La cantidad que se añadirá debe ser mayor que 0',
-      });
-    }
-
-    const stockItem = await Stock.findById(id);
+    const quantityToAdd = parseStockQuantity(req.body.quantityToAdd);
+    if (quantityToAdd === null) return res.status(400).json({ message: 'La cantidad que se añadirá debe ser finita, mayor que 0 y tener máximo 3 decimales' });
+    const now = new Date();
+    const set = { lastRestockDate: now, lastRestockQuantity: quantityToAdd };
+    if (req.body.notes !== undefined) set.notes = { $literal: String(req.body.notes) };
+    const stockItem = await atomic(req, async (session) => {
+      const updated = await Stock.findOneAndUpdate(
+      { _id: req.params.id, currentQuantity: { $lte: 1_000_000 - quantityToAdd } },
+      [
+        { $set: { ...set, currentQuantity: { $add: ['$currentQuantity', quantityToAdd] } } },
+        { $set: {
+          status: statusExpression(),
+          alerts: {
+            $map: {
+              input: { $ifNull: ['$alerts', []] }, as: 'alert',
+              in: {
+                $cond: [
+                  { $and: [
+                    { $eq: ['$$alert.isResolved', false] },
+                    { $or: [
+                      { $and: [{ $eq: ['$$alert.severity', 'critical'] }, { $gt: ['$currentQuantity', '$reorderLevel'] }] },
+                      { $and: [{ $eq: ['$$alert.severity', 'warning'] }, { $gte: ['$currentQuantity', { $multiply: ['$reorderLevel', 2] }] }] },
+                    ] },
+                  ] },
+                  { $mergeObjects: ['$$alert', { isResolved: true, resolvedAt: now }] },
+                  '$$alert',
+                ],
+              },
+            },
+          },
+        } },
+      ],
+        { new: true, session },
+      );
+      if (updated) await auditHttp(req, 'inventory.restocked', { type: 'stock', id: String(updated._id) }, { quantity: quantityToAdd }, { session });
+      return updated;
+    });
     if (!stockItem) {
-      return res.status(404).json({ message: 'Artículo del inventario no encontrado' });
+      const exists = await Stock.exists({ _id: req.params.id });
+      return res.status(exists ? 409 : 404).json({ message: exists ? 'La reposición excede el límite operativo' : 'Artículo del inventario no encontrado' });
     }
-
-    stockItem.currentQuantity += quantityToAdd;
-    const currentLevel = stockItem.currentQuantity;
-    const reorderLevel = stockItem.reorderLevel;
-
-    stockItem.lastRestockDate = new Date();
-    stockItem.lastRestockQuantity = quantityToAdd;
-    if (notes) {
-      stockItem.notes = notes;
-    }
-
-    
-    let resolvedAlertCount = 0;
-    const isSufficient = currentLevel >= (reorderLevel * 2);
-    const isAboveReorder = currentLevel > reorderLevel;
-    
-    
-    stockItem.alerts.forEach((alert) => {
-      if (!alert.isResolved) {
-        
-        if (alert.severity === 'critical' && isAboveReorder) {
-          alert.isResolved = true;
-          alert.resolvedAt = new Date();
-          resolvedAlertCount++;
-        }
-        else if (alert.severity === 'warning' && isSufficient) {
-          alert.isResolved = true;
-          alert.resolvedAt = new Date();
-          resolvedAlertCount++;
-        }
-      }
-    });
-
-    await stockItem.save();
-
-    res.status(200).json({
-      message: 'Existencias añadidas correctamente',
-      data: stockItem,
-      alertsResolved: resolvedAlertCount,
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: 'Error al añadir existencias',
-    });
-  }
+    const alertsResolved = (stockItem.alerts || []).filter((alert) => (
+      alert.isResolved && alert.resolvedAt && new Date(alert.resolvedAt).getTime() === now.getTime()
+    )).length;
+    return res.status(200).json({ message: 'Existencias añadidas correctamente', data: stockItem, alertsResolved });
+  } catch (error) { return next(error); }
 };
 
-const recordConsumption = async (req, res) => {
+const recordConsumption = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { quantityUsed, reason } = req.body;
-
-    if (!quantityUsed || quantityUsed <= 0) {
-      return res.status(400).json({
-        message: 'La cantidad utilizada debe ser mayor que 0',
-      });
-    }
-
-    const stockItem = await Stock.findById(id);
+    const quantityUsed = parseStockQuantity(req.body.quantityUsed);
+    if (quantityUsed === null) return res.status(400).json({ message: 'La cantidad utilizada debe ser finita, mayor que 0 y tener máximo 3 decimales' });
+    const now = new Date();
+    const historyEntry = { _id: new Types.ObjectId(), date: now, quantityUsed, reason: String(req.body.reason || 'Daily Consumption') };
+    const criticalAlertId = new Types.ObjectId();
+    const warningAlertId = new Types.ObjectId();
+    const stockItem = await atomic(req, async (session) => {
+      const updated = await Stock.findOneAndUpdate(
+      { _id: req.params.id, currentQuantity: { $gte: quantityUsed } },
+      [
+        { $set: {
+          currentQuantity: { $subtract: ['$currentQuantity', quantityUsed] },
+          consumptionHistory: { $concatArrays: [{ $ifNull: ['$consumptionHistory', []] }, [{ $literal: historyEntry }]] },
+        } },
+        { $set: {
+          status: statusExpression(),
+          averageDailyConsumption: {
+            $divide: [
+              { $reduce: { input: '$consumptionHistory', initialValue: 0, in: { $add: ['$$value', '$$this.quantityUsed'] } } },
+              { $max: [1, { $ceil: { $divide: [{ $subtract: [now, { $arrayElemAt: ['$consumptionHistory.date', 0] }] }, 86_400_000] } }] },
+            ],
+          },
+          alerts: {
+            $let: {
+              vars: { active: { $filter: { input: { $ifNull: ['$alerts', []] }, as: 'a', cond: { $eq: ['$$a.isResolved', false] } } } },
+              in: {
+                $concatArrays: [
+                  { $ifNull: ['$alerts', []] },
+                  { $cond: [
+                    { $and: [
+                      { $lte: ['$currentQuantity', '$reorderLevel'] },
+                      { $eq: [{ $size: { $filter: { input: '$$active', as: 'a', cond: { $eq: ['$$a.severity', 'critical'] } } } }, 0] },
+                    ] },
+                    [{ _id: criticalAlertId, date: now, message: { $concat: ['Stock for ', '$itemName', ' has fallen below reorder level'] }, severity: 'critical', isResolved: false, resolvedAt: null }],
+                    { $cond: [
+                      { $and: [
+                        { $gt: ['$currentQuantity', '$reorderLevel'] },
+                        { $lte: ['$currentQuantity', { $multiply: ['$reorderLevel', 1.5] }] },
+                        { $eq: [{ $size: '$$active' }, 0] },
+                      ] },
+                      [{ _id: warningAlertId, date: now, message: { $concat: ['Stock for ', '$itemName', ' is getting low - monitor usage closely'] }, severity: 'warning', isResolved: false, resolvedAt: null }],
+                      [],
+                    ] },
+                  ] },
+                ],
+              },
+            },
+          },
+        } },
+        { $set: {
+          estimatedDepletionDate: {
+            $cond: [
+              { $gt: ['$averageDailyConsumption', 0] },
+              { $add: [now, { $multiply: [{ $divide: ['$currentQuantity', '$averageDailyConsumption'] }, 86_400_000] }] },
+              '$estimatedDepletionDate',
+            ],
+          },
+        } },
+      ],
+        { new: true, session },
+      );
+      if (updated) await auditHttp(req, 'inventory.consumed', { type: 'stock', id: String(updated._id) }, { quantity: quantityUsed }, { session });
+      return updated;
+    });
     if (!stockItem) {
-      return res.status(404).json({ message: 'Artículo del inventario no encontrado' });
-    }
-
-    if (stockItem.currentQuantity < quantityUsed) {
-      return res.status(400).json({
+      const existing = await Stock.findById(req.params.id).select('currentQuantity');
+      if (!existing) return res.status(404).json({ message: 'Artículo del inventario no encontrado' });
+      return res.status(409).json({
         message: 'No hay existencias suficientes. No se puede registrar el consumo.',
-        available: stockItem.currentQuantity,
+        available: existing.currentQuantity,
         requested: quantityUsed,
       });
     }
-
-    const previousQuantity = stockItem.currentQuantity;
-    stockItem.currentQuantity -= quantityUsed;
-    const currentQuantity = stockItem.currentQuantity;
-    const reorderLevel = stockItem.reorderLevel;
-    const warningThreshold = reorderLevel * 1.5;
-
-    stockItem.consumptionHistory.push({
-      date: new Date(),
-      quantityUsed,
-      reason: reason || 'Daily Consumption',
-    });
-
-    let alertTriggered = false;
-    
-    if (currentQuantity <= reorderLevel) {
-      const hasCriticalAlert = stockItem.alerts.some(a => a.severity === 'critical' && !a.isResolved);
-      if (!hasCriticalAlert) {
-        stockItem.alerts.push({
-          date: new Date(),
-          message: `Stock for ${stockItem.itemName} has fallen below reorder level`,
-          severity: 'critical',
-          isResolved: false,
-        });
-        alertTriggered = true;
-      }
-    }
-    else if (currentQuantity <= warningThreshold && currentQuantity > reorderLevel) {
-      const hasWarningOrCriticalAlert = stockItem.alerts.some(a => (a.severity === 'warning' || a.severity === 'critical') && !a.isResolved);
-      if (!hasWarningOrCriticalAlert) {
-        stockItem.alerts.push({
-          date: new Date(),
-          message: `Stock for ${stockItem.itemName} is getting low - monitor usage closely`,
-          severity: 'warning',
-          isResolved: false,
-        });
-        alertTriggered = true;
-      }
-    }
-
-    await stockItem.save();
-
-    res.status(200).json({
-      message: 'Consumo registrado correctamente',
-      data: stockItem,
-      alertTriggered,
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: 'Error al registrar el consumo',
-    });
-  }
+    const alertTriggered = (stockItem.alerts || []).some((alert) => (
+      !alert.isResolved && alert.date && new Date(alert.date).getTime() === now.getTime()
+    ));
+    return res.status(200).json({ message: 'Consumo registrado correctamente', data: stockItem, alertTriggered });
+  } catch (error) { return next(error); }
 };
 
-const updateStockItem = async (req, res) => {
+const updateStockItem = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { reorderLevel, notes } = req.body;
-
-    const stockItem = await Stock.findById(id);
-    if (!stockItem) {
-      return res.status(404).json({ message: 'Artículo del inventario no encontrado' });
+    const allowed = ['reorderLevel', 'notes'];
+    const keys = req.body && typeof req.body === 'object' ? Object.keys(req.body) : [];
+    if (keys.length === 0 || keys.some((key) => !allowed.includes(key))) {
+      return res.status(400).json({ message: 'La actualización debe contener sólo reorderLevel o notes' });
     }
-
-    if (reorderLevel !== undefined) {
-      stockItem.reorderLevel = reorderLevel;
+    const update = {};
+    if (req.body.reorderLevel !== undefined) {
+      const reorderLevel = parseStockQuantity(req.body.reorderLevel, { allowZero: true });
+      if (reorderLevel === null) return res.status(400).json({ message: 'El nivel debe ser finito, no negativo y tener máximo 3 decimales' });
+      update.reorderLevel = reorderLevel;
     }
-    if (notes !== undefined) {
-      stockItem.notes = notes;
-    }
-
-    await stockItem.save();
-
-    res.status(200).json({
-      message: 'Artículo del inventario actualizado correctamente',
-      data: stockItem,
+    if (req.body.notes !== undefined) update.notes = { $literal: String(req.body.notes) };
+    const stockItem = await atomic(req, async (session) => {
+      const updated = await Stock.findOneAndUpdate(
+        { _id: req.params.id },
+        [{ $set: update }, { $set: { status: statusExpression() } }],
+        { new: true, session },
+      );
+      if (updated) await auditHttp(req, 'inventory.item_updated', { type: 'stock', id: String(updated._id) }, { reorderLevel: update.reorderLevel }, { session });
+      return updated;
     });
-  } catch (error) {
-    res.status(500).json({
-      message: 'Error al actualizar el artículo del inventario',
-    });
-  }
+    if (!stockItem) return res.status(404).json({ message: 'Artículo del inventario no encontrado' });
+    return res.status(200).json({ message: 'Artículo del inventario actualizado correctamente', data: stockItem });
+  } catch (error) { return next(error); }
 };
 
 const getStockAnalytics = async (req, res) => {
@@ -381,24 +364,25 @@ const getAllAlerts = async (req, res) => {
   }
 };
 
-const deleteStockItem = async (req, res) => {
+const deleteStockItem = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const stockItem = await Stock.findByIdAndDelete(id);
+    const stockItem = await atomic(req, async (session) => {
+      const deleted = await Stock.findByIdAndDelete(id, { session });
+      if (deleted) await auditHttp(req, 'inventory.item_deleted', { type: 'stock', id: String(deleted._id) }, {
+        itemKey: deleted.itemKey,
+      }, { session });
+      return deleted;
+    });
     if (!stockItem) {
       return res.status(404).json({ message: 'Artículo del inventario no encontrado' });
     }
-
-    res.status(200).json({
+    return res.status(200).json({
       message: 'Artículo del inventario eliminado correctamente',
       data: stockItem,
     });
-  } catch (error) {
-    res.status(500).json({
-      message: 'Error al eliminar el artículo del inventario',
-    });
-  }
+  } catch (error) { return next(error); }
 };
 
 module.exports = {

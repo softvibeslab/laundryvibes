@@ -252,7 +252,7 @@ Artículos iniciales definidos por el backend:
 - Bleach
 - Starch
 
-La primera lectura de inventario crea estos artículos si la colección está vacía.
+La API nunca crea inventario durante una lectura. El catálogo se inicializa de forma explícita con `npm run seed-stock`, después de ejecutar la migración de `itemKey`.
 
 ### 6. Tiempo real
 
@@ -546,14 +546,14 @@ Las cuentas admin bootstrap también viven en esta colección con `role: "admin"
 
 ### Riesgos técnicos que deben priorizarse
 
-1. `/api/admin/login` y `/api/worker/login` usan el login común pero no heredan el rate limiter de `/api/user/login`.
-2. Las actualizaciones de inventario usan lectura-modificación-escritura y no son atómicas ante concurrencia.
-3. La creación de workers no normaliza email ni exige la misma política de contraseña que los usuarios.
-4. Los JWT no tienen revocación ni versionado de sesión.
-5. El rol del token no se reconsulta en cada petición.
-6. `GET /api/stock/all` puede escribir datos al inicializar la colección.
+1. Los alias `/api/user/login`, `/api/admin/login` y `/api/worker/login` comparten el mismo rate limiter en cada instancia del backend. En un despliegue con varias réplicas se requiere un store externo compartido para un límite global.
+2. Reposición y consumo de inventario usan filtros y actualizaciones atómicas; no reemplazarlos por lectura-modificación-escritura.
+3. Los límites en memoria no son globales entre réplicas; configurar un store compartido antes de escalar horizontalmente.
+4. La revocación JWT depende de consultar la cuenta en cada petición/socket; monitorizar latencia y disponibilidad de MongoDB.
+5. La protección append-only del modelo de auditoría no sustituye permisos de colección que bloqueen escrituras administrativas directas.
+6. La inicialización de stock se mantiene fuera de endpoints GET y debe ejecutarse mediante el seed controlado.
 7. No existe una máquina de transiciones para todos los estados de pedido.
-8. El inventario necesita validación numérica centralizada y límites explícitos.
+8. Los límites numéricos del inventario son operativos; cualquier ampliación exige revisar precisión, filtros atómicos y analítica.
 
 ## Estructura del repositorio
 
@@ -624,6 +624,9 @@ Los directorios `node_modules`, `dist`, `secrets`, archivos `.env` y logs están
 | `PAYLOAD_LIMIT` | `100kb` | Límite JSON |
 | `JWT_EXPIRES_IN` | `1h` | Vigencia JWT |
 | `RESET_TOKEN_TTL_MINUTES` | `15` | Vigencia del reset |
+| `LOGIN_RATE_LIMIT` | `10` | Intentos de login por IP cada 15 minutos, compartidos entre aliases |
+| `RESET_RATE_LIMIT` | `5` | Solicitudes de recuperación por IP cada hora |
+| `WRITE_RATE_LIMIT` | `120` | Mutaciones administrativas/inventario por IP cada 15 minutos; no cuenta GET/HEAD/OPTIONS |
 
 ### Integraciones opcionales
 
@@ -676,6 +679,19 @@ npm run dev
 ```
 
 El backend queda, por defecto, en `http://127.0.0.1:3000`.
+
+### Bootstrap seguro de administrador y stock
+
+Desde `BACKEND`, con `MONGODB_URL` revisada y un respaldo reciente, ejecutar primero los modos sin escritura:
+
+```sh
+# ADMIN_EMAIL y ADMIN_PASSWORD deben estar ya inyectadas por el gestor de secretos
+npm run bootstrap-admin -- --dry-run
+npm run migrate-stock-item-key -- --dry-run
+npm run seed-stock -- --dry-run
+```
+
+Tras revisar el resultado y dentro de una ventana aprobada, ejecutar `npm run migrate-stock-item-key -- --apply` antes del seed. La migración aborta si detecta identidades normalizadas duplicadas, rellena `itemKey` y crea sólo el índice único explícito; no usa `syncIndexes`. `bootstrap-admin` no imprime credenciales y no modifica un administrador existente; `seed-stock` es idempotente y no sobrescribe cantidades existentes. Las mutaciones auditadas y sus eventos se escriben en una transacción MongoDB, por lo que el despliegue requiere una topología con transacciones. No guardar secretos en Git, archivos de shell ni historial. Los dry-runs sí se conectan y leen la base, pero no escriben documentos, índices ni auditoría. Procedimiento completo: `docs/production-runbook.md`.
 
 ### Frontend
 
@@ -1044,18 +1060,18 @@ Advertencia: la herramienta `login` devuelve el JWT al cliente MCP y `submit_ord
 
 ### Datos y consistencia
 
-- `User.bagNumber` es String y `Complaint.bagNumber` es Number.
-- `itemName` no tiene índice único aunque el controlador intenta evitar duplicados.
-- Las operaciones de stock no son atómicas.
-- `GET /api/stock/all` puede inicializar datos.
-- Los resúmenes no tratan `Delivered` como completado.
-- Algunas fechas están formateadas con `Asia/Kolkata`.
+- `bagNumber` está normalizado como String en usuarios y reclamaciones.
+- Inventario usa una identidad normalizada `itemKey`; antes de exigir el índice único sobre datos históricos se debe ejecutar `npm run migrate-stock-item-key -- --dry-run` y reconciliar cualquier duplicado reportado.
+- Reposición, consumo y auditoría usan filtros atómicos y transacciones MongoDB; Atlas o el servidor Mongo deben soportar transacciones.
+- La inicialización de inventario es un seed CLI explícito; los endpoints GET no escriben datos.
+- Los resúmenes todavía no tratan `Delivered` como completado.
+- Algunas fechas todavía están formateadas con `Asia/Kolkata`.
 
 ### Ingeniería
 
 - No hay OpenAPI/Swagger.
-- No hay migraciones o gestión explícita de índices.
-- No hay refresh tokens, revocación JWT ni MFA.
+- Existe una primera migración explícita para `Stock.itemKey`; aún falta un framework general de migraciones para el resto de modelos.
+- Hay revocación JWT mediante `tokenVersion` y estado activo, pero todavía no hay refresh tokens ni MFA.
 - No hay observabilidad estructurada, métricas o correlation IDs.
 - El frontend no tiene pruebas automatizadas.
 - El frontend importa `prop-types` sin declararlo como dependencia directa.
@@ -1067,12 +1083,9 @@ Advertencia: la herramienta `login` devuelve el JWT al cliente MCP y `submit_ord
 
 ### Prioridad 0 — seguridad y consistencia
 
-1. Aplicar rate limiting a todos los endpoints de login o eliminar aliases.
-2. Normalizar emails y unificar reglas de contraseña para workers/admin.
-3. Crear un bootstrap de administrador auditable, idempotente y fuera de rutas públicas.
-4. Validar números de inventario con esquemas y usar operaciones atómicas.
-5. Implementar versionado/revocación de sesiones.
-6. Corregir el tipo de `bagNumber` en reclamaciones.
+1. Añadir MFA para administradores.
+2. Automatizar pruebas de restauración y rotación de credenciales.
+3. Corregir el tipo de `bagNumber` en reclamaciones.
 
 ### Prioridad 1 — operación completa
 
@@ -1081,7 +1094,7 @@ Advertencia: la herramienta `login` devuelve el JWT al cliente MCP y `submit_ord
 3. Bandeja y resolución de reclamaciones.
 4. Administración de usuarios y workers.
 5. Paginación, búsqueda, filtros e índices MongoDB.
-6. Separar el seed de inventario de una ruta GET.
+
 
 ### Prioridad 2 — producto
 

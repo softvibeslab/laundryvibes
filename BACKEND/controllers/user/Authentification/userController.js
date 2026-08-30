@@ -5,6 +5,9 @@ const nodemailer = require('nodemailer');
 const User = require('../../../models/user');
 const Worker = require('../../../models/Worker/workerModel');
 const { normalizeEmail, isValidEmail, isValidPassword } = require('../../../utils/credentials');
+const { auditHttp } = require('../../../services/auditService');
+const { versionOf } = require('../../../services/accountService');
+const { runInTransaction } = require('../../../services/transactionService');
 
 const publicUser = (doc) => ({ id: String(doc._id), name: doc.name, email: doc.email, role: doc.role });
 
@@ -34,11 +37,15 @@ async function loginUser(req, res, next) {
     const email = normalizeEmail(req.body.email);
     const password = String(req.body.password || '');
     if (!email || !password) return res.status(400).json({ message: 'El correo electrónico y la contraseña son obligatorios' });
-    const account = (await User.findOne({ email }).select('+password')) || (await Worker.findOne({ email }).select('+password'));
-    if (!account || !(await bcrypt.compare(password, account.password)))
+    const account = (await User.findOne({ email }).select('+password +tokenVersion')) || (await Worker.findOne({ email }).select('+password +tokenVersion'));
+    if (!account || account.active === false || !(await bcrypt.compare(password, account.password)))
       return res.status(401).json({ message: 'El correo electrónico o la contraseña no son válidos' });
     const config = req.app.locals.config;
-    const token = jwt.sign({ userId: String(account._id), role: account.role }, config.jwtSecret, { expiresIn: config.jwtExpiresIn, subject: String(account._id) });
+    const tokenVersion = versionOf(account.tokenVersion);
+    const token = jwt.sign({ userId: String(account._id), role: account.role, tokenVersion }, config.jwtSecret, { expiresIn: config.jwtExpiresIn, subject: String(account._id) });
+    if (account.role === 'admin') await auditHttp(req, 'account.admin_login', { type: 'account', id: String(account._id) }, undefined, {
+      actor: { id: account._id, role: account.role },
+    });
     const name = account.name || (account.role === 'admin' ? 'Administrador' : 'Trabajador');
     return res.json({ success: true, message: 'Inicio de sesión correcto', token, name, userId: account._id, role: account.role });
   } catch (error) { return next(error); }
@@ -67,15 +74,19 @@ async function forgotPassword(req, res) {
 async function resetPassword(req, res, next) {
   try {
     const { newPassword, confirmPassword } = req.body;
-    if (!newPassword || newPassword !== confirmPassword || newPassword.length < 8)
+    if (!newPassword || newPassword !== confirmPassword || !isValidPassword(newPassword))
       return res.status(400).json({ message: 'Las contraseñas deben coincidir y contener al menos 8 caracteres.' });
     const digest = crypto.createHash('sha256').update(String(req.params.token)).digest('hex');
-    const account = await User.findOne({ resetPasswordToken: digest, resetPasswordExpires: { $gt: new Date() } }).select('+resetPasswordToken +resetPasswordExpires');
+    const account = await User.findOne({ resetPasswordToken: digest, resetPasswordExpires: { $gt: new Date() } }).select('+resetPasswordToken +resetPasswordExpires +tokenVersion');
     if (!account) return res.status(400).json({ message: 'El token no es válido o ha expirado' });
-    account.password = await bcrypt.hash(newPassword, 12);
-    account.resetPasswordToken = undefined;
-    account.resetPasswordExpires = undefined;
-    await account.save();
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await runInTransaction(async (session) => {
+      account.password = hashedPassword;
+      account.resetPasswordToken = undefined;
+      account.resetPasswordExpires = undefined;
+      await account.save({ session });
+      await auditHttp(req, 'account.password_reset', { type: 'account', id: String(account._id) }, undefined, { session });
+    }, { transactionRunner: req.app?.locals?.config?.transactionRunner });
     return res.json({ message: 'Contraseña actualizada correctamente' });
   } catch (error) { return next(error); }
 }
@@ -83,11 +94,15 @@ async function resetPassword(req, res, next) {
 async function updatePassword(req, res, next) {
   try {
     const { currentPassword, newPassword } = req.body;
-    if (!newPassword || newPassword.length < 8) return res.status(400).json({ message: 'La nueva contraseña debe contener al menos 8 caracteres' });
-    const account = await User.findById(req.user.userId).select('+password');
+    if (!isValidPassword(newPassword)) return res.status(400).json({ message: 'La nueva contraseña debe contener al menos 8 caracteres' });
+    const account = await User.findById(req.user.userId).select('+password +tokenVersion');
     if (!account || !(await bcrypt.compare(currentPassword || '', account.password))) return res.status(400).json({ message: 'La contraseña actual es incorrecta' });
-    account.password = await bcrypt.hash(newPassword, 12);
-    await account.save();
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await runInTransaction(async (session) => {
+      account.password = hashedPassword;
+      await account.save({ session });
+      await auditHttp(req, 'account.password_changed', { type: 'account', id: String(account._id) }, undefined, { session });
+    }, { transactionRunner: req.app?.locals?.config?.transactionRunner });
     return res.json({ message: 'Contraseña actualizada correctamente' });
   } catch (error) { return next(error); }
 }

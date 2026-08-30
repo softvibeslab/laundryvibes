@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const request = require('supertest');
 const { createApp } = require('../app');
 const PaymentConfig = require('../models/paymentConfig');
+const AuditEvent = require('../models/auditEvent');
 const Order = require('../models/userOrder');
 const { detectEvidenceType, MAX_EVIDENCE_BYTES } = require('../middleware/evidenceUpload');
 const { financialDto } = require('../utils/orderDto');
@@ -12,6 +13,8 @@ const { calculateTotal, parsePrice } = require('../services/paymentService');
 const config = {
   jwtSecret: 'payment-test-secret-with-enough-entropy', jwtExpiresIn: '1h',
   corsOrigins: ['https://app.example.com'], payloadLimit: '100kb',
+  accountLookup: async (claims) => ({ role: claims.role, active: true, tokenVersion: claims.tokenVersion || 0 }),
+  transactionRunner: async (work) => work({ id: 'test-session' }),
 };
 const app = createApp(config);
 const ids = {
@@ -31,6 +34,9 @@ function stub(object, property, replacement) {
   object[property] = replacement;
   return () => { object[property] = original; };
 }
+
+// Route tests stub persistence models and must not attempt a real audit DB write.
+AuditEvent.create = async (event) => event;
 
 test('payment config endpoint is authenticated and returns singleton defaults', async () => {
   assert.equal((await request(app).get('/api/payments/config')).status, 401);

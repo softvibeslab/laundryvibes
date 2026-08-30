@@ -28,8 +28,18 @@ function createApp(config) {
   app.use(helmet());
   app.use(cors(corsOptions));
   app.use(express.json({ limit: config.payloadLimit }));
-  app.use('/api/user/login', rateLimit({ windowMs: 15 * 60_000, limit: 10, standardHeaders: 'draft-7', legacyHeaders: false, message: { message: 'Demasiados intentos. Inténtalo de nuevo más tarde.' } }));
-  app.use('/api/user/forgot-password', rateLimit({ windowMs: 60 * 60_000, limit: 5, standardHeaders: 'draft-7', legacyHeaders: false, message: { message: 'Demasiadas solicitudes. Inténtalo de nuevo más tarde.' } }));
+  const limiter = (windowMs, limit, message) => rateLimit({
+    windowMs, limit, standardHeaders: 'draft-7', legacyHeaders: false,
+    message: { message },
+  });
+  // All aliases share one limiter/store, so changing the URL cannot reset the quota.
+  const loginLimiter = limiter(15 * 60_000, config.loginRateLimit || 10, 'Demasiados intentos. Inténtalo de nuevo más tarde.');
+  app.use(['/api/user/login', '/api/admin/login', '/api/worker/login'], loginLimiter);
+  app.use(['/api/user/forgot-password', '/api/user/reset-password'], limiter(60 * 60_000, config.resetRateLimit || 5, 'Demasiadas solicitudes. Inténtalo de nuevo más tarde.'));
+  const writeLimiter = limiter(15 * 60_000, config.writeRateLimit || 120, 'Demasiadas operaciones. Inténtalo de nuevo más tarde.');
+  app.use(['/api/admin/add-worker', '/api/admin/payment-config', '/api/stock'], (req, res, next) => (
+    ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ? next() : writeLimiter(req, res, next)
+  ));
   app.get('/api/health/live', (req, res) => res.json({ status: 'ok' }));
   app.get('/api/health/ready', (req, res) => {
     const ready = require('mongoose').connection.readyState === 1;

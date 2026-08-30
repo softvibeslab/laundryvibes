@@ -17,11 +17,20 @@ function loadConfig(env = process.env) {
   const origins = (env.CORS_ORIGINS || frontendUrl).split(',').map((v) => v.trim()).filter(Boolean);
   origins.forEach((origin) => { try { new URL(origin); } catch { throw new Error(`Invalid CORS origin: ${origin}`); } });
 
+  const positiveInteger = (name, fallback) => {
+    const value = Number(env[name] || fallback);
+    if (!Number.isSafeInteger(value) || value < 1) throw new Error(`${name} must be a positive integer`);
+    return value;
+  };
+
   return Object.freeze({
     nodeEnv: env.NODE_ENV || 'development', port, host: env.HOST || '127.0.0.1',
     mongoUrl: env.MONGODB_URL, jwtSecret: env.JWT_SECRET, frontendUrl,
     corsOrigins: origins, payloadLimit: env.PAYLOAD_LIMIT || '100kb',
-    jwtExpiresIn: env.JWT_EXPIRES_IN || '1h', resetTtlMinutes: Number(env.RESET_TOKEN_TTL_MINUTES || 15),
+    jwtExpiresIn: env.JWT_EXPIRES_IN || '1h', resetTtlMinutes: positiveInteger('RESET_TOKEN_TTL_MINUTES', 15),
+    loginRateLimit: positiveInteger('LOGIN_RATE_LIMIT', 10),
+    resetRateLimit: positiveInteger('RESET_RATE_LIMIT', 5),
+    writeRateLimit: positiveInteger('WRITE_RATE_LIMIT', 120),
   });
 }
 
