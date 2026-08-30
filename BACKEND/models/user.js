@@ -65,6 +65,11 @@ const userSchema = new Schema(
   }
 );
 
+userSchema.index({ bagNumber: 1 });
+userSchema.index({ name: 1 });
+userSchema.index({ roomNumber: 1 });
+// phoneNumber already has a unique index and serves exact/prefix operational filters.
+
 userSchema.pre('save', async function revokeChangedAccount() {
   if (!this.isNew && (this.isModified('password') || this.isModified('active') || this.isModified('role'))) {
     let currentVersion = this.tokenVersion;

@@ -37,7 +37,7 @@ function createApp(config) {
   app.use(['/api/user/login', '/api/admin/login', '/api/worker/login'], loginLimiter);
   app.use(['/api/user/forgot-password', '/api/user/reset-password'], limiter(60 * 60_000, config.resetRateLimit || 5, 'Demasiadas solicitudes. Inténtalo de nuevo más tarde.'));
   const writeLimiter = limiter(15 * 60_000, config.writeRateLimit || 120, 'Demasiadas operaciones. Inténtalo de nuevo más tarde.');
-  app.use(['/api/admin/add-worker', '/api/admin/payment-config', '/api/stock'], (req, res, next) => (
+  app.use(['/api/admin/add-worker', '/api/admin/payment-config', '/api/stock', '/api/admin/orders', '/api/worker/orders', '/api/worker/update-order-status'], (req, res, next) => (
     ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ? next() : writeLimiter(req, res, next)
   ));
   app.get('/api/health/live', (req, res) => res.json({ status: 'ok' }));
@@ -49,6 +49,7 @@ function createApp(config) {
   app.use('/api/payments', paymentRoutes);
   app.use('/api/admin', workerAccountRoutes);
   app.use('/api/admin', adminPaymentRoutes);
+  app.use('/api/admin', workerOrderRoutes);
   app.use('/api/worker', workerAccountRoutes, workerOrderRoutes);
   app.use('/api/stock', stockRoutes);
   app.use(notFound);

@@ -184,7 +184,7 @@ test('POS is worker/admin-only and performs conditional atomic write that cannot
   const clientDeclaration = { method: 'transfer', source: 'client', evidence: { data: png, contentType: 'image/png', extension: 'png' } };
   const restores = [
     stub(PaymentConfig, 'findOneAndUpdate', async () => effectiveConfig()),
-    stub(Order, 'findById', async () => ({ pricing: { currency: 'MXN', pricePerKg: 60, total: 60 } })),
+    stub(Order, 'findById', async () => ({ assignedWorker: ids.worker, pricing: { currency: 'MXN', pricePerKg: 60, total: 60 } })),
     stub(Order, 'findOneAndUpdate', async (...args) => {
       [filter, update] = args;
       const set = update.$set;
@@ -200,6 +200,7 @@ test('POS is worker/admin-only and performs conditional atomic write that cannot
     assert.equal(response.status, 200);
     assert.equal(response.body.order.payment.status, 'paid');
     assert.deepEqual(filter['payment.current.status'], { $ne: 'paid' });
+    assert.equal(filter.assignedWorker, ids.worker);
     assert.deepEqual(filter['payment.status'], { $ne: 'paid' });
     assert.equal(Object.hasOwn(update.$set, 'payment'), false);
     assert.equal(Object.keys(update.$set).some((path) => path.startsWith('payment.clientDeclaration')), false);
@@ -223,7 +224,7 @@ test('POS rejects historical orders without valid pricing with 409', async () =>
   const restores = [
     stub(PaymentConfig, 'findOneAndUpdate', async () => effectiveConfig()),
     stub(Order, 'findOneAndUpdate', async () => null),
-    stub(Order, 'findById', async () => ({ pricing: undefined, payment: {} })),
+    stub(Order, 'findById', async () => ({ assignedWorker: ids.worker, pricing: undefined, payment: {} })),
   ];
   try {
     const response = await request(app).patch(`/api/worker/orders/${ids.order}/payment`).set('Authorization', auth('worker')).field('paymentMethod', 'cash');

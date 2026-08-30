@@ -1,8 +1,9 @@
 const orderStatusLabels = {
   Pending: 'Pendiente',
   'In Progress': 'En proceso',
-  Completed: 'Completado',
+  Completed: 'Listo',
   Delivered: 'Entregado',
+  Cancelled: 'Cancelado',
 };
 
 const stockStatusLabels = {

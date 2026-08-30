@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 // import { OrderContext } from '../../User/SubmitOrder/OrderContext';
-import NewOrder from './NewOrder';
 import GenerateReport from './GenerateReport';
 
 
@@ -14,7 +13,7 @@ import {
   CheckCircle,
   Clock,
   TrendingUp,
-  Plus,
+
   FileText,
   RefreshCw,
   Settings,
@@ -24,29 +23,12 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-const getMostRecentOrderByStatus  = (orders,status) => {
-  if (!orders || orders.length === 0) {
-    return null;
-  }
-
-  // Filter orders by date and time in descending order and get the first order
-  const filteredOrders  = orders
-  .filter(order => status ? order.status === status : true) // If status is provided, filter by it, otherwise get any order
-  .sort((a, b) => {
-    const dateA = new Date(a.createdAt || `${a.date} ${a.time}`);
-    const dateB = new Date(b.createdAt || `${b.date} ${b.time}`);
-    return dateB - dateA;
-  });
-
-  return filteredOrders.length > 0 ? filteredOrders[0] : null;
-};
-
 function WorkerDashbaord() {
 
   const role = localStorage.getItem('role') === 'admin' ? 'admin' : 'worker';
   const settingsPath = role === 'admin' ? '/admin/settings' : '/worker/settings';
 
-  const[orders,setOrders]=useState([]);
+
   const[totalOrders,setTotalOrders]=useState(0);
   const[pendingOrders,setPendingOrders]=useState(0);
   const[completeOrders,setCompleteOrders]=useState(0);  
@@ -61,24 +43,25 @@ function WorkerDashbaord() {
 
 
   // Navigation Buttons
-  const [isNewOrderOpen, setNewOrderOpen] = useState(false);
   const [isGenerateReportOpen, setGenerateReportOpen] = useState(false);
 
  
   const fetchDetails = async () => {
     setLoading(true);
     try{
-      const response = await axios.get("/api/worker/getallorderdetails");
-      
-      // Set all orders data
-      setOrders(response.data.orders || []);
-      setCompleteOrders(response.data.completedOrders);
-      setPendingOrders(response.data.pendingOrders);
-      setTotalOrders(response.data.totalOrders);
+      const [allResponse, pendingResponse, completedResponse] = await Promise.all([
+        axios.get('/api/worker/orders', { params: { page: 1, limit: 1 } }),
+        axios.get('/api/worker/orders', { params: { page: 1, limit: 1, status: 'Pending' } }),
+        axios.get('/api/worker/orders', { params: { page: 1, limit: 1, status: 'Completed' } }),
+      ]);
+
+      setCompleteOrders(completedResponse.data.total || 0);
+      setPendingOrders(pendingResponse.data.total || 0);
+      setTotalOrders(allResponse.data.total || 0);
 
       // Get the most recent orders
-      const recentNewOrder = getMostRecentOrderByStatus(response.data.orders);
-      const recentCompletedOrder = getMostRecentOrderByStatus(response.data.orders, 'Completed');
+      const recentNewOrder = (allResponse.data.items || [])[0] || null;
+      const recentCompletedOrder = (completedResponse.data.items || [])[0] || null;
       
       // Store the entire order objects
       setMostRecentNewOrder(recentNewOrder);
@@ -216,15 +199,11 @@ function WorkerDashbaord() {
 
           {/* Action Buttons */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <button
-            onClick={()=>{
-              setNewOrderOpen(true);
-            }} 
-            
-             className="bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-lg flex flex-col items-center justify-center">
-              <Plus className="h-6 w-6 mb-2" />
-              <span>Nuevo pedido</span>
-            </button>
+            <div role="note" className="border border-gray-300 bg-gray-100 text-gray-700 p-4 rounded-lg flex flex-col items-center justify-center text-center">
+              <ClipboardList className="h-6 w-6 mb-2" />
+              <span className="font-semibold">Alta operativa no disponible</span>
+              <span className="text-xs">Los clientes crean pedidos desde su cuenta.</span>
+            </div>
             <button
              onClick={()=>{
               setGenerateReportOpen(true);
@@ -243,11 +222,7 @@ function WorkerDashbaord() {
             </Link>
           </div>
 
-          <NewOrder
-          isOpen={isNewOrderOpen}
-          onClose={()=> setNewOrderOpen(false)}
-         
-          />
+
           <GenerateReport
            isOpen={isGenerateReportOpen}
            onClose={()=> setGenerateReportOpen(false)}
